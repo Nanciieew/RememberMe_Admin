@@ -1,0 +1,15 @@
+{
+  "name": "rememberme-admin",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:client": "esbuild client/blob-client.js --bundle --minify --format=iife --platform=browser --outfile=blob-client.js"
+  },
+  "dependencies": {
+    "@vercel/blob": "2.8.1",
+    "@vercel/functions": "3.10.1"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

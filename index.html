@@ -1,0 +1,1896 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Remember Me 制作站</title>
+<script src="/blob-client.js" defer></script>
+<style>
+  :root {
+    --bg: #f5f2fa; --surface: #ffffff; --ink: #221e45; --ink-soft: #57537a; --done: #a9a5bf;
+    --line: #e2dcef; --edge: #8f8aad; --grid: #e6e1f0; --marigold: #d9700f;
+    --marigold-soft: #fbe3c8; --flame: #f59b2a; --wick: #c9c3dc; --quote-bg: #f0ebf8;
+    --bar: rgba(245, 242, 250, 0.92); color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17163a; --surface: #201f4a; --ink: #f3e6cf; --ink-soft: #b9b2d4; --done: #6b6790;
+      --line: #34326a; --edge: #7d79a8; --grid: #2c2b5c; --marigold: #f4952f;
+      --marigold-soft: #3d2f3f; --flame: #ffb347; --wick: #4a4880; --quote-bg: #26255a;
+      --bar: rgba(23, 22, 58, 0.92); color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17163a; --surface: #201f4a; --ink: #f3e6cf; --ink-soft: #b9b2d4; --done: #6b6790;
+    --line: #34326a; --edge: #7d79a8; --grid: #2c2b5c; --marigold: #f4952f;
+    --marigold-soft: #3d2f3f; --flame: #ffb347; --wick: #4a4880; --quote-bg: #26255a;
+    --bar: rgba(23, 22, 58, 0.92); color-scheme: dark;
+  }
+  :root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 60px); }
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 16px; line-height: 1.7;
+  }
+  body::before {
+    content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10;
+    background: var(--bar); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* Top menu */
+  .topbar {
+    position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9;
+    background: var(--bar); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar nav { display: flex; justify-content: center; gap: 4px; height: 44px; align-items: center; }
+  .topbar a {
+    font-size: 14px; color: var(--ink-soft); text-decoration: none;
+    padding: 5px 14px; border-radius: 999px;
+  }
+  .topbar a:hover { color: var(--ink); }
+  .topbar a[aria-current="page"] { color: var(--ink); background: var(--marigold-soft); font-weight: 600; }
+  .topbar a:focus-visible { outline: 2px solid var(--marigold); outline-offset: 2px; }
+
+  .view[hidden] { display: none !important; }
+  h1.page {
+    font-family: "Songti SC", "Noto Serif SC", "STSong", serif; font-size: 36px; line-height: 1.25; margin: 0 0 8px;
+  }
+  .sub { margin: 0; color: var(--ink-soft); }
+
+  /* ---------- Checklist ---------- */
+  #view-checklist .wrap { max-width: 760px; margin: 0 auto; padding: 40px 20px 96px; }
+  .candles { display: flex; flex-wrap: wrap; gap: 6px; margin: 28px 0 8px; padding: 18px 16px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+  .candle { width: 14px; display: flex; flex-direction: column; align-items: center; cursor: pointer; background: none; border: 0; padding: 0; }
+  .candle .flame { width: 8px; height: 12px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; background: transparent; margin-bottom: 2px; transition: background .3s, box-shadow .3s; }
+  .candle .body { width: 10px; height: 26px; border-radius: 2px; background: var(--wick); transition: background .3s; }
+  .candle.lit .flame { background: var(--flame); box-shadow: 0 0 10px 3px color-mix(in srgb, var(--flame) 60%, transparent); }
+  .candle.lit .body { background: var(--ink); opacity: .85; }
+  .candle:focus-visible { outline: 2px solid var(--marigold); outline-offset: 3px; border-radius: 3px; }
+  .progress-line { display: flex; justify-content: space-between; align-items: baseline; color: var(--ink-soft); font-size: 14px; margin-bottom: 40px; }
+  .progress-line strong { color: var(--ink); font-size: 18px; }
+  .btn-quiet { background: none; border: 1px solid var(--line); color: var(--ink-soft); border-radius: 8px; padding: 4px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+  .progress-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .btn-quiet:hover { color: var(--ink); border-color: var(--ink-soft); }
+  section.phase { margin-bottom: 48px; }
+  .phase-head { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--marigold); padding-bottom: 8px; margin-bottom: 8px; }
+  .phase-head h2 { font-family: "Songti SC", "Noto Serif SC", "STSong", serif; font-size: 24px; margin: 0; }
+  .phase-head span { color: var(--ink-soft); font-size: 14px; }
+  .phase-note { margin: 12px 0 4px; padding: 10px 14px; background: var(--marigold-soft); border-radius: 8px; font-size: 14px; }
+  .step { display: grid; grid-template-columns: 32px 28px 1fr; gap: 0 10px; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .step input { appearance: none; width: 24px; height: 24px; margin: 2px 0 0; border: 2px solid var(--marigold); border-radius: 50%; cursor: pointer; display: grid; place-content: center; background: var(--surface); }
+  .step input::after { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--marigold); transform: scale(0); transition: transform .15s; }
+  .step input:checked::after { transform: scale(1); }
+  .step input:focus-visible { outline: 2px solid var(--marigold); outline-offset: 3px; }
+  .num { color: var(--ink-soft); font-variant-numeric: tabular-nums; padding-top: 1px; }
+  .content h3 { font-size: 17px; margin: 0 0 4px; line-height: 1.5; }
+  .content p, .content li { margin: 0; color: var(--ink-soft); font-size: 15px; }
+  .content ul { margin: 4px 0 0; padding-left: 20px; }
+  .prompt { margin: 10px 0 0; padding: 12px 14px; background: var(--quote-bg); border-left: 3px solid var(--marigold); border-radius: 0 8px 8px 0; font-size: 14px; color: var(--ink); }
+  .prompt .copy { display: block; margin-top: 8px; }
+  .step.done .content h3, .step.done .content p, .step.done .content li, .step.done .num { text-decoration: line-through; color: var(--done); }
+  .step.done .prompt { opacity: .5; }
+  .step.done .prompt, .step.done .prompt * { text-decoration: line-through; color: var(--done); }
+  .saved { color: var(--ink-soft); font-size: 13px; text-align: center; margin-top: 24px; }
+
+  /* ---------- PRD ---------- */
+  #view-prd .layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 48px; max-width: 1180px; margin: 0 auto; padding: 40px 24px 96px; }
+  nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 64px); align-self: start; max-height: calc(100vh - 88px); overflow-y: auto; font-size: 14px; }
+  nav.toc ul { list-style: none; margin: 0; padding: 0; }
+  nav.toc li.l2 { margin-top: 10px; }
+  nav.toc li.l2 a { color: var(--ink); font-weight: 600; }
+  nav.toc li.l3 a { color: var(--ink-soft); padding-left: 22px; }
+  nav.toc a { text-decoration: none; line-height: 1.6; display: block; padding: 2px 0 2px 8px; border-left: 2px solid transparent; }
+  nav.toc a.active { border-left-color: var(--marigold); color: var(--marigold); }
+  nav.toc a:hover { color: var(--marigold); }
+  nav.toc summary { cursor: pointer; font-weight: 600; }
+  #view-prd main { max-width: 820px; min-width: 0; }
+  #view-prd h2 { font-family: "Songti SC", "Noto Serif SC", "STSong", serif; font-size: 28px; margin: 64px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--marigold); }
+  #view-prd h3 { font-size: 19px; margin: 36px 0 10px; }
+  #view-prd p, #view-prd li { max-width: 72ch; }
+  #view-prd ul, #view-prd ol { padding-left: 22px; }
+  #view-prd li { margin: 4px 0; }
+  .table-wrap { overflow-x: auto; margin: 16px 0 24px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; line-height: 1.6; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  th { background: var(--quote-bg); font-weight: 600; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  code { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 13px; background: var(--quote-bg); padding: 2px 6px; border-radius: 4px; word-break: break-word; }
+  #view-prd main code { cursor: copy; }
+  #view-prd main code:hover { outline: 1px solid var(--marigold); }
+  figure.diagram { margin: 20px 0 24px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  figure.diagram .scroll { overflow-x: auto; }
+  figure.diagram svg { display: block; width: 100%; min-width: 620px; height: auto; font-family: inherit; }
+  figcaption { color: var(--ink-soft); font-size: 13px; margin-top: 8px; text-align: center; }
+  .tip { color: var(--ink-soft); font-size: 13px; margin-top: 12px; }
+
+  /* ---------- Library ---------- */
+  #view-library .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 96px; }
+  .cats { display: flex; flex-wrap: wrap; gap: 8px; margin: 28px 0 20px; }
+  .cats button {
+    font: inherit; font-size: 14px; padding: 6px 14px; border-radius: 999px; cursor: pointer;
+    background: var(--surface); color: var(--ink-soft); border: 1px solid var(--line);
+  }
+  .cats button[aria-pressed="true"] { background: var(--marigold); border-color: var(--marigold); color: #fff; font-weight: 600; }
+  .cats button .count { opacity: .75; margin-left: 4px; font-variant-numeric: tabular-nums; }
+  .lib-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .lib-bar h2 { font-size: 20px; margin: 0; }
+  .btn-main {
+    font: inherit; font-size: 14px; font-weight: 600; padding: 7px 16px; border-radius: 8px; cursor: pointer;
+    background: var(--marigold); color: #fff; border: 0;
+  }
+  .btn-main:disabled { opacity: .55; cursor: progress; }
+  .btn-main:focus-visible, .cats button:focus-visible, .btn-quiet:focus-visible { outline: 2px solid var(--marigold); outline-offset: 2px; }
+  .drop {
+    border: 2px dashed var(--line); border-radius: 14px; padding: 14px; min-height: 220px;
+    transition: border-color .15s, background .15s;
+  }
+  .drop.over { border-color: var(--marigold); background: var(--marigold-soft); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+  .card a.thumb { display: block; aspect-ratio: 4 / 3; background: var(--quote-bg); }
+  .card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card .meta { padding: 8px 10px; display: flex; align-items: center; gap: 6px; }
+  .card .name { flex: 1; min-width: 0; font-size: 13px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .meta button { font: inherit; font-size: 12px; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--line); background: none; color: var(--ink-soft); cursor: pointer; }
+  .card .meta button:hover { color: var(--ink); border-color: var(--ink-soft); }
+  .card .name.editable { cursor: text; }
+  .card .name.editable:hover { color: var(--ink); text-decoration: underline dotted; }
+  .card input.rename { flex: 1; min-width: 0; font: inherit; font-size: 13px; padding: 2px 6px; border: 1px solid var(--marigold); border-radius: 6px; background: var(--bg); color: var(--ink); }
+  .card .meta button.save { background: var(--marigold); border-color: var(--marigold); color: #fff; }
+  .empty { color: var(--ink-soft); text-align: center; padding: 56px 12px; }
+  .lib-note { color: var(--ink-soft); font-size: 13px; margin-top: 12px; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: var(--bg); padding: 8px 16px; border-radius: 8px; font-size: 14px; opacity: 0;
+    transition: opacity .2s, transform .2s; pointer-events: none; z-index: 20; max-width: 90vw;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 960px) {
+    #view-prd .layout { grid-template-columns: 1fr; gap: 0; }
+    nav.toc { position: static; max-height: none; margin-bottom: 24px; padding: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+  }
+  @media (max-width: 520px) {
+    h1.page { font-size: 28px; }
+    .step { grid-template-columns: 28px 24px 1fr; }
+    .topbar a { padding: 5px 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <nav aria-label="页面">
+    <a href="#checklist" data-view="checklist">制作清单</a>
+    <a href="#prd" data-view="prd">PRD</a>
+    <a href="#library" data-view="library">参考图库</a>
+  </nav>
+</header>
+
+<!-- Checklist -->
+<section class="view" id="view-checklist">
+  <div class="wrap">
+    <h1 class="page">Remember Me 制作清单</h1>
+    <p class="sub">《寻梦环游记》同人网页游戏的全部制作步骤。勾选即完成，进度自动保存在这个浏览器里。</p>
+    <div class="candles" id="candles" aria-label="完成进度，每支蜡烛代表一个步骤"></div>
+    <div class="progress-line">
+      <span>已完成 <strong id="count">0</strong> / <span id="total">0</span> 步</span>
+      <span class="progress-actions"><button class="btn-quiet" id="export" type="button">导出进度</button><button class="btn-quiet" id="import" type="button">导入进度</button><button class="btn-quiet" id="reset" type="button">清空全部进度</button><input type="file" id="import-file" accept="application/json,.json" hidden></span>
+    </div>
+    <div id="list"></div>
+    <p class="saved" id="saved">进度自动保存</p>
+  </div>
+</section>
+
+<!-- PRD -->
+<section class="view" id="view-prd" hidden>
+  <div class="layout">
+    <nav class="toc" aria-label="PRD 目录">
+      <details open id="toc-details"><summary>目录</summary>
+      <ul>
+<li class="l2"><a href="#s1">1. 文档说明与关键决策</a></li>
+<li class="l2"><a href="#s2">2. 产品概述与体验目标</a></li>
+<li class="l2"><a href="#s3">3. 故事梗概与情绪曲线</a></li>
+<li class="l2"><a href="#s4">4. 场景设计：墓园与教堂</a></li>
+<li class="l3"><a href="#s4-1">4.1 总体布局</a></li>
+<li class="l3"><a href="#s4-2">4.2 入口拱门</a></li>
+<li class="l3"><a href="#s4-3">4.3 墓区与普通墓</a></li>
+<li class="l3"><a href="#s4-4">4.4 家族墓（扫墓地点）</a></li>
+<li class="l3"><a href="#s4-5">4.5 白色教堂（外观）</a></li>
+<li class="l3"><a href="#s4-6">4.6 教堂内部</a></li>
+<li class="l3"><a href="#s4-7">4.7 光照与氛围</a></li>
+<li class="l3"><a href="#s4-8">4.8 亡灵世界的变化</a></li>
+<li class="l2"><a href="#s5">5. 人物设计</a></li>
+<li class="l3"><a href="#s5-1">5.1 Miguel（主角）</a></li>
+<li class="l3"><a href="#s5-2">5.2 生者背景角色</a></li>
+<li class="l3"><a href="#s5-3">5.3 穿身路人（关键过场角色）</a></li>
+<li class="l3"><a href="#s5-4">5.4 亡灵背景角色（仅亡灵世界）</a></li>
+<li class="l2"><a href="#s6">6. 关键道具</a></li>
+<li class="l2"><a href="#s7">7. 游戏流程与场景交互逻辑</a></li>
+<li class="l3"><a href="#s7-1">7.1 各环节交互规则</a></li>
+<li class="l3"><a href="#s7-2">7.2 扫墓的 4 个步骤</a></li>
+<li class="l3"><a href="#s7-3">7.3 通用交互规则</a></li>
+<li class="l2"><a href="#s8">8. 操作与镜头</a></li>
+<li class="l3"><a href="#s8-1">8.1 键位</a></li>
+<li class="l3"><a href="#s8-2">8.2 自由视角（参考 littleprince.dev）</a></li>
+<li class="l3"><a href="#s8-3">8.3 过场镜头</a></li>
+<li class="l2"><a href="#s9">9. 任务系统与英文 UI 文案</a></li>
+<li class="l3"><a href="#s9-1">9.1 目标面板（按住 Tab）</a></li>
+<li class="l3"><a href="#s9-2">9.2 交互提示</a></li>
+<li class="l3"><a href="#s9-3">9.3 页面与菜单文案</a></li>
+<li class="l2"><a href="#s10">10. 灯光、特效与音频</a></li>
+<li class="l3"><a href="#s10-1">10.1 灯光</a></li>
+<li class="l3"><a href="#s10-2">10.2 特效</a></li>
+<li class="l3"><a href="#s10-3">10.3 音频</a></li>
+<li class="l2"><a href="#s11">11. 3D 资产清单与 Tripo 提示词</a></li>
+<li class="l3"><a href="#s11-1">11.1 人物</a></li>
+<li class="l3"><a href="#s11-2">11.2 建筑与大型场景</a></li>
+<li class="l3"><a href="#s11-3">11.3 道具</a></li>
+<li class="l2"><a href="#s12">12. 技术方案与工具链</a></li>
+<li class="l3"><a href="#s12-1">12.1 生产工具链</a></li>
+<li class="l3"><a href="#s12-2">12.2 Unity 工程方案</a></li>
+<li class="l3"><a href="#s12-3">12.3 网页发布</a></li>
+<li class="l3"><a href="#s12-4">12.4 性能指标</a></li>
+<li class="l2"><a href="#s13">13. 里程碑、验收与风险</a></li>
+<li class="l3"><a href="#s13-1">13.1 小目标</a></li>
+<li class="l3"><a href="#s13-2">13.2 验收标准</a></li>
+<li class="l3"><a href="#s13-3">13.3 主要风险</a></li>
+      </ul>
+      </details>
+    </nav>
+    <main>
+      <h1 class="page">Remember Me 游戏 PRD</h1>
+      <p class="sub">《寻梦环游记》同人网页游戏 · 亡灵节墓园</p>
+      <p class="sub">V1.0，2026-10-29，Nanxi</p>
+      <p class="tip">点击任意代码样式的提示词即可复制。</p>
+<h2 id="s1">1. 文档说明与关键决策</h2>
+<p>本 PRD 定义一款基于电影《寻梦环游记》（Coco）的同人网页游戏首个可玩片段：玩家操控 Miguel 在亡灵节夜晚的墓园中扫墓、进入教堂弹响吉他，并跨入亡灵世界，一次通关 5–10 分钟。文中的场景与人物描述可直接作为 Tripo 生成模型的依据。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>决定</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>文档版本</td>
+<td>V1.0（替代此前《回声之境》开放世界方案）</td>
+</tr>
+<tr>
+<td>用途</td>
+<td>个人作品集，非商业</td>
+</tr>
+<tr>
+<td>发布形式</td>
+<td>独立 .dev 网站，浏览器内直接游玩，参考 littleprince.dev</td>
+</tr>
+<tr>
+<td>支持设备</td>
+<td>电脑端 Chrome / Edge；手机与平板暂不支持</td>
+</tr>
+<tr>
+<td>引擎</td>
+<td>Unity 6（URP）导出 Web 版本，嵌入网页</td>
+</tr>
+<tr>
+<td>主角</td>
+<td>Miguel，保留电影原角色</td>
+</tr>
+<tr>
+<td>时长</td>
+<td>5–10 分钟，单场景、单次通关</td>
+</tr>
+<tr>
+<td>界面语言</td>
+<td>纯英文</td>
+</tr>
+<tr>
+<td>镜头</td>
+<td>点击画面后锁定鼠标，鼠标自由转动第三人称视角；剧情节点播放过场</td>
+</tr>
+<tr>
+<td>美术风格</td>
+<td>完全参考电影：皮克斯风格卡通渲染，夜色深蓝 + 烛光暖橙</td>
+</tr>
+<tr>
+<td>音乐</td>
+<td>使用电影原声（风险见第 13 节）</td>
+</tr>
+<tr>
+<td>可互动角色</td>
+<td>仅 Miguel；其他人物均为不可互动的背景角色</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>不在本版范围：</strong> 亡灵世界的深入探索、对话系统、存档、移动端适配、多语言。</p>
+<p><strong>版权声明（放在开始页与网站页脚）：</strong> Fan-made, non-commercial portfolio project. Coco and all related characters, music and designs © Disney / Pixar.</p>
+<h2 id="s2">2. 产品概述与体验目标</h2>
+<p>一句话：<strong>在满地烛光的亡灵节墓园里，为祖先扫墓、弹响那把白色吉他，然后发现自己已经站在了生者与亡灵的交界处。</strong></p>
+<p>这是一段以氛围和情绪为核心的短篇互动体验，不考验操作，重点是让人“走进电影里”。作品集观看者打开网页后，应在 30 秒内开始操作，10 分钟内看到完整结尾。</p>
+<p><strong>三个体验目标：</strong></p>
+<ol>
+<li><strong>身临其境</strong>：墓园的烛光、花瓣、音乐与电影高度一致，第一眼就能认出这是《寻梦环游记》。</li>
+<li><strong>亲手完成仪式</strong>：扫墓的每个步骤都由玩家亲手完成，让“记住祖先”这个主题落到具体动作上。</li>
+<li><strong>一次惊喜的转折</strong>：弹响吉他后，一个路人直接穿过 Miguel 的身体，玩家和 Miguel 同时意识到：他已经进入了亡灵世界。</li>
+</ol>
+<p><strong>参考：</strong> littleprince.dev 的网页形态，包括开始页主视觉、点击开始、加载进度、仅支持电脑端浏览器。</p>
+<h2 id="s3">3. 故事梗概与情绪曲线</h2>
+<p>亡灵节之夜，Miguel 独自来到小镇墓园。他在墓碑间穿行，辨认祖先的名字，按照传统为家族的墓擦拭墓碑、献花、点烛、摆上照片与供品。花瓣小路随之亮起，指向墓园中央的白色教堂。教堂里挂着他心目中曾曾祖父的画像，画像下方是那把白色吉他。Miguel 取下吉他，拨响第一根弦，满地花瓣随之腾起。一个前来祭拜的人走进教堂，径直穿过了他的身体。Miguel 低头看向自己发着橙光的双手，走出教堂时，墓园里出现了骷髅模样的亡灵。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>段落</th>
+<th>情绪</th>
+<th>节奏</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>进入墓园</td>
+<td>好奇、温暖</td>
+<td>慢，自由漫步</td>
+</tr>
+<tr>
+<td>寻找家族墓、扫墓</td>
+<td>宁静、庄重</td>
+<td>慢，逐步完成仪式</td>
+</tr>
+<tr>
+<td>花瓣小路亮起</td>
+<td>期待</td>
+<td>稍快，被引向教堂</td>
+</tr>
+<tr>
+<td>教堂内、取下吉他</td>
+<td>紧张、心跳加速</td>
+<td>安静，镜头靠近</td>
+</tr>
+<tr>
+<td>拨弦、花瓣腾起</td>
+<td>释放、震撼</td>
+<td>情绪最高点</td>
+</tr>
+<tr>
+<td>路人穿身而过</td>
+<td>困惑、惊讶</td>
+<td>过场，节奏放缓</td>
+</tr>
+<tr>
+<td>走进亡灵世界</td>
+<td>惊奇、悬念</td>
+<td>慢，结束于“To be continued”</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="s4">4. 场景设计：墓园与教堂</h2>
+<p>整个游戏只有一个场景：一座亡灵节夜晚的墨西哥小镇墓园，中央是一座白色小教堂。可活动区域约 70 m × 90 m（Miguel 奔跑从入口到教堂约 20 秒），围墙外的房屋、远山和更多烛光墓地用低模与背景画延伸，营造“一眼望不到头的烛光墓园”。以下每一小节都可以直接作为 Tripo 建模与场景搭建的依据，对应的英文提示词见第 11 节。</p>
+<h3 id="s4-1">4.1 总体布局</h3>
+<figure class="diagram"><div class="scroll"><svg viewBox="0 0 760 512" role="img" aria-label="墓园俯视布局" font-family="inherit"><text x="24" y="34" text-anchor="start" font-size="15" font-weight="600" fill="var(--ink)">墓园俯视布局：入口在南，教堂在北，中央石板路连接两端</text><path d="M360 448H80V70H680V448H400" fill="none" stroke="var(--edge)" stroke-width="2"/><path d="M360 448Q380 432 400 448" fill="none" stroke="var(--edge)" stroke-width="2"/><rect x="365" y="160" width="30" height="288" fill="var(--grid)" opacity="0.6"/><rect x="102" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="102" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="102" y="246" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="102" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="102" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="102" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="102" y="366" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="102" y="396" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="132" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="132" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="132" y="246" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="132" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="132" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="132" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="132" y="366" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="132" y="396" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="162" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="162" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="162" y="246" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="162" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="162" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="162" y="366" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="162" y="396" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="192" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="192" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="192" y="246" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="192" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="192" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="192" y="366" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="192" y="396" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="222" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="222" y="246" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="222" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="222" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="222" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="222" y="366" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="222" y="396" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="252" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="252" y="246" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="252" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="252" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="252" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="282" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="282" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="282" y="246" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="282" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="282" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="282" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="312" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="312" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="312" y="246" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="312" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="312" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="312" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="432" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="432" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="432" y="246" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="432" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="432" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="432" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="432" y="366" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="432" y="396" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="462" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="462" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="462" y="246" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="462" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="462" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="462" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="462" y="366" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="462" y="396" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="492" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="492" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="492" y="246" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="492" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="492" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="492" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="492" y="366" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="492" y="396" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="522" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="522" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="522" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="522" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="522" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="522" y="366" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="522" y="396" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="552" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="552" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="552" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="552" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="552" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="552" y="366" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="552" y="396" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="582" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="582" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="582" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="582" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="582" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="582" y="366" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="582" y="396" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="612" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="612" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="612" y="246" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="612" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="612" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="612" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="612" y="366" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="612" y="396" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="642" y="186" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="642" y="216" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="642" y="246" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="642" y="276" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="642" y="306" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="642" y="336" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="642" y="366" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><rect x="642" y="396" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><path d="M190 318V330H372V160" fill="none" stroke="var(--marigold)" stroke-width="2.5" stroke-dasharray="6 4"/><circle cx="120" cy="118" r="22" fill="var(--grid)" stroke="var(--edge)"/><circle cx="640" cy="118" r="22" fill="var(--grid)" stroke="var(--edge)"/><text x="120" y="158" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">古树</text><rect x="320" y="88" width="120" height="72" rx="4" fill="var(--marigold)" fill-opacity="0.15" stroke="var(--marigold)" stroke-width="2"/><text x="380" y="120" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">白色教堂</text><text x="380" y="140" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">画像 · 吉他</text><rect x="177.0" y="303.0" width="26" height="14" rx="2" fill="var(--marigold)" fill-opacity="0.25" stroke="var(--marigold)" stroke-width="1.5"/><text x="190" y="296" text-anchor="middle" font-size="11.5" fill="var(--ink)">家族墓 A</text><rect x="547.0" y="243.0" width="26" height="14" rx="2" fill="var(--marigold)" fill-opacity="0.25" stroke="var(--marigold)" stroke-width="1.5"/><text x="560" y="274" text-anchor="middle" font-size="11.5" fill="var(--ink)">家族墓 B</text><rect x="237.0" y="213.0" width="26" height="14" rx="2" fill="var(--marigold)" fill-opacity="0.25" stroke="var(--marigold)" stroke-width="1.5"/><text x="250" y="244" text-anchor="middle" font-size="11.5" fill="var(--ink)">家族墓 C</text><rect x="275.0" y="372.0" width="30" height="16" rx="2" fill="var(--marigold)" fill-opacity="0.25" stroke="var(--marigold)" stroke-width="1.5"/><text x="290" y="406" text-anchor="middle" font-size="11.5" fill="var(--ink)">花摊</text><circle cx="380" cy="428" r="6" fill="var(--marigold)"/><text x="416" y="432" text-anchor="start" font-size="11.5" fill="var(--ink)">出生点</text><text x="380" y="470" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">入口拱门（亡灵世界中为终点触发区）</text><path d="M80 496H112" stroke="var(--marigold)" stroke-width="2.5" stroke-dasharray="6 4"/><text x="120" y="500" text-anchor="start" font-size="11.5" fill="var(--ink-soft)">花瓣小路（扫墓完成后亮起）</text><rect x="330" y="489" width="20" height="12" rx="2" fill="var(--marigold)" fill-opacity="0.25" stroke="var(--marigold)" stroke-width="1.5"/><text x="358" y="500" text-anchor="start" font-size="11.5" fill="var(--ink-soft)">可互动地点</text><rect x="470" y="491" width="16" height="8" rx="1" fill="none" stroke="var(--edge)"/><text x="494" y="500" text-anchor="start" font-size="11.5" fill="var(--ink-soft)">普通墓（仅装饰）</text></svg></div><figcaption>墓园俯视布局 · 约 70 m × 90 m</figcaption></figure>
+<p>中央石板路从南侧入口拱门直通北侧教堂，是场景的视觉中轴，沿路两侧摆满蜡烛；家族墓 A、B、C 分散在两侧墓区中，让玩家必须离开主路在墓碑间穿行。墓园内约 120 座普通墓，由 8–10 种墓体模型变体与装饰组合而成。</p>
+<h3 id="s4-2">4.2 入口拱门</h3>
+<ul>
+<li>白色灰泥砖结构的拱门，顶部呈圆润的波浪形弧顶，墙面略有剥落与水渍，边缘手工感、不完全平直。</li>
+<li>拱门上方浮雕大写西班牙文墓园名（建议沿用电影中的 Panteón Santa Cecilia），字母沿弧形排列。</li>
+<li>外侧与内侧都拉着彩色剪纸旗（papel picado），颜色为紫、绿、粉、橙、蓝，在微风中轻轻摆动。</li>
+<li>拱门内顶挂一盏旧铁灯笼，地面沿门槛摆一排蜡烛。</li>
+</ul>
+<h3 id="s4-3">4.3 墓区与普通墓</h3>
+<ul>
+<li>墓体以抬高的水泥长方形墓台为主（长约 2 m、宽 0.9 m、高 0.3–0.6 m），头部立十字架或圆顶墓碑，涂成白、天蓝、粉、奶黄等褪色的明快颜色，带旧污渍。</li>
+<li>少数小型家族祭室：白色小房子形状，有铁门和小十字架。</li>
+<li>几乎每座墓上都有大量白色长蜡烛与红色玻璃罩烛、成束的万寿菊（橙黄）和鸡冠花（深紫红），部分墓用万寿菊编成拱形花门。</li>
+<li>若干墓上方搭着蓝色塑料布棚，由木杆支撑，是电影中很有辨识度的元素。</li>
+<li>墓间是压实的土路与碎石地，散落橙色花瓣；角落有若干根系粗壮、枝杈伸展的大树形成暗色剪影。</li>
+<li>围墙为低矮的白色/土黄色灰泥墙，墙外可见亮着暖黄窗灯的小镇低矮房屋。</li>
+</ul>
+<h3 id="s4-4">4.4 家族墓（扫墓地点）</h3>
+<ul>
+<li>3 座，属于 Rivera 家族的不同祖先，尺寸与普通墓相同，但初始状态<strong>未装饰</strong>：墓碑蒙有灰尘与落叶、没有花和蜡烛，在满场烛光中显得暗淡，一眼就能看出是“待完成”的。</li>
+<li>墓碑上刻着祖先的名字与生卒年（英文/西班牙文），墓台前方有一个小小的台面用于摆放照片与供品。</li>
+<li>完成扫墓后切换为“已装饰”状态：墓碑干净发亮、万寿菊花束、一组点燃的蜡烛、黑白老照片、糖骷髅与亡灵面包。</li>
+</ul>
+<h3 id="s4-5">4.5 白色教堂（外观）</h3>
+<ul>
+<li>白色巴洛克风格小教堂（电影中为音乐家的陵墓教堂），占地约 10 m × 8 m，高约 12 m，是场景最高的建筑与视觉焦点。</li>
+<li>正立面：三段式结构，两侧各一座矮小的方形塔楼，由成对的圆柱支撑；中央为高拱形壁龛，内放人物半身像；顶部装饰石雕吉他与卷草纹。</li>
+<li>入口：底部中央一扇圆拱形深色木门带铁艺格栅，门上方刻有西班牙文铭文（意为“请记住我”）。未完成扫墓时门关着，完成后门缝透出蓝色月光。</li>
+<li>装饰：立面上挂满万寿菊花环与花带，台阶、窗台、塔楼边缘密集摆放蜡烛，整座建筑被暖橙色烛光从下方照亮，顶部没入深蓝夜空。</li>
+<li>侧墙：高大的拱形窗带细密窗棂，从外可见窗内的烛光与花。</li>
+</ul>
+<h3 id="s4-6">4.6 教堂内部</h3>
+<ul>
+<li>一个单间的对称矩形厅堂（约 8 m × 6 m，层高约 7 m），全白色大理石与灰泥材质，在月光下呈冷蓝色调。</li>
+<li>地面：黑白（深灰蓝/浅灰蓝）棋盘格大理石，从门口到中央铺满厚厚一层橙色万寿菊花瓣。</li>
+<li>中央：一座抬高的白色石棺（石碑台），下方有 3–4 级台阶；石棺侧面浮雕五线谱与音符。</li>
+<li>正对大门的后墙：两根带凹槽的墙柱，柱头为卷涡形；两柱之间上方挂一幅银色巴洛克雕花画框的油画肖像，画中男子面带微笑、留小胡子、身穿白色墨西哥传统骑射服、戴白色宽沿大草帽；画像下方用三根铁挂钩横挂白色吉他。</li>
+<li>两侧墙面：各有 1–2 扇高大拱窗，窗格细密，强烈的蓝色月光从窗外斜射进来，形成可见的体积光束；窗下为长窗台。</li>
+<li>墙角与壁龛：贝壳形半圆顶壁龛，内放深色陶瓶插满暗红与橙色花束；画像下方墙沿上散落花瓣。</li>
+</ul>
+<h3 id="s4-7">4.7 光照与氛围</h3>
+<ul>
+<li>全场景为深夜，天空是深蓝到帝王紫的渐变，有稀疏星星。主光是低角度冷蓝色月光。</li>
+<li>核心色彩对比：冷蓝的夜色与建筑 vs. 成千上万点暖橙烛光与万寿菊。室外以暖橙为主，教堂内以冷蓝为主，两者形成情绪转换。</li>
+<li>场景中有薄雾，让远处烛光形成柔和光晕；空中漂浮少量光尘与花瓣。</li>
+</ul>
+<h3 id="s4-8">4.8 亡灵世界的变化</h3>
+<ul>
+<li>地形、墓碑、教堂、蜡烛的布置<strong>完全不变</strong>，只改变人物与光效。</li>
+<li>人群中加入骷髅亡灵，与生者混在一起；生者看不见亡灵。生者世界中不出现亡灵。</li>
+<li>花瓣从普通橙色变为微微自发光的亮橙色，地面花瓣间有微弱的光点闪烁。</li>
+<li>画面整体色调稍偏紫，饱和度略微提高，但保持与生者世界可辨认的同一场景。</li>
+</ul>
+<h2 id="s5">5. 人物设计</h2>
+<p>只有 Miguel 可操控、可互动；其余人物全部是不可互动的背景角色，用于营造节日氛围，并在亡灵世界中制造“生者与亡灵同在”的对比。</p>
+<h3 id="s5-1">5.1 Miguel（主角）</h3>
+<ul>
+<li><strong>基本设定</strong>：约 12 岁的墨西哥男孩，热爱音乐，独自来到墓园。</li>
+<li><strong>比例</strong>：身高约 1.4 m，皮克斯卡通比例，头部偏大（头身比约 1:5），四肢纤细。</li>
+<li><strong>脸部</strong>：圆脸，褐色皮肤，大而有神的深棕色眼睛，浓眉，圆润的鼻头，招风耳略明显，表情生动。</li>
+<li><strong>头发</strong>：浓密黑色短发，刘海凌乱地盖在额前，头顶有一撮向上翘的呆毛。</li>
+<li><strong>服装</strong>：暗红色拉链连帽卫衣（袖子外侧各有一条白色竖条纹，敞开穿），里面是白色背心；蓝色牛仔裤，裤脚略宽；棕色旧皮鞋。</li>
+<li><strong>亡灵状态</strong>：外形不变，全身边缘出现明亮的橙色光晕（类似逆光轮廓），身体带有柔和辉光，周围偶尔飘起细小的橙色光点。</li>
+<li><strong>动作清单</strong>：待机、走、跑、转身、蹲下/跪下、擦拭、献花、点烛、摆放物品、踮脚取下吉他、抱吉他待机、拨弦、低头看手的惊讶反应、回头。</li>
+</ul>
+<h3 id="s5-2">5.2 生者背景角色</h3>
+<ul>
+<li>约 15–25 人，分布在墓区各处，以 4–6 个基础模型加换色、换配件组合，避免重复感。</li>
+<li>类型：老奶奶（深色长裙、披肩、白发盘起）、中年男女（衬衫、毛衣、外套）、孩子、戴草帽的老人。</li>
+<li>行为：坐或跪在墓前、整理花束、点蜡烛、低头祈祷、轻声交谈、在小路上慢慢走动；只播放循环待机动画和简单路径行走，不回应玩家。</li>
+</ul>
+<h3 id="s5-3">5.3 穿身路人（关键过场角色）</h3>
+<ul>
+<li>一位中年男子，白衬衫外套深色夹克，手捧一束万寿菊，神情平静，前来教堂祭拜。</li>
+<li>只出现在弹奏后的过场中：从教堂大门走进来，沿直线走向画像，途中直接穿过 Miguel 的身体，没有任何停顿或绕行，随后在画像前放下花束。</li>
+</ul>
+<h3 id="s5-4">5.4 亡灵背景角色（仅亡灵世界）</h3>
+<ul>
+<li>约 10–15 个，以 3–4 个基础骨架模型换装组合。</li>
+<li>外形：完整的人形骷髅，骨骼为象牙白；头骨上有亡灵节糖骷髅风格的彩绘纹样（花朵、卷草、圆点），颜色鲜艳；身穿各自年代的服装，如长裙、披肩、西装、草帽。</li>
+<li>行为：在自家墓前看着祭拜的家人、在小路上漫步、相互交谈；与生者混在一起，生者对他们毫无反应。</li>
+</ul>
+<h2 id="s6">6. 关键道具</h2>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>道具</th>
+<th>外观描述</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>白色吉他</td>
+<td>古典木吉他造型，琴身纯白；下琴身与音孔周围饰有深色（黑/深蓝）卷草花纹；音孔外圈为三角纹装饰环；白色指板配银色品丝；琴头雕成风格化的骷髅头形，两个镂空槽如同眼窝，配银色弦钮</td>
+<td>核心道具：挂在画像下方，取下并弹奏</td>
+</tr>
+<tr>
+<td>画像</td>
+<td>银色巴洛克雕花厚画框，油画风格，画中男子身穿白色骑射服、头戴白色宽沿大草帽</td>
+<td>教堂视觉焦点，可按 E 查看</td>
+</tr>
+<tr>
+<td>万寿菊花束</td>
+<td>成束的橙黄色万寿菊（cempasúchil），夹杂少量深紫红色鸡冠花</td>
+<td>扫墓时献花，从花摊拿取</td>
+</tr>
+<tr>
+<td>散落花瓣</td>
+<td>橙色小花瓣，铺在地面、台阶、窗台上，可被风吹动</td>
+<td>全场景标志性元素，弹奏时腾起</td>
+</tr>
+<tr>
+<td>蜡烛</td>
+<td>白色长柱蜡烛与细长烛，红色玻璃杯装蜡烛，火焰温暖微微摇曳</td>
+<td>全场景照明；扫墓时点燃</td>
+</tr>
+<tr>
+<td>糖骷髅</td>
+<td>白色骷髅头形糖果，用粉、绿、黄、蓝色糖霜绘制花纹</td>
+<td>扫墓供品</td>
+</tr>
+<tr>
+<td>亡灵面包</td>
+<td>圆形甜面包，表面装饰交叉的骨头形面团，撒白砂糖</td>
+<td>扫墓供品</td>
+</tr>
+<tr>
+<td>老照片</td>
+<td>黑白相片，装在小木框中</td>
+<td>扫墓时摆在墓前</td>
+</tr>
+<tr>
+<td>花摊</td>
+<td>木桌上摆着几只金属桶，桶里插满万寿菊与鸡冠花</td>
+<td>取花地点</td>
+</tr>
+<tr>
+<td>彩色剪纸旗</td>
+<td>彩色薄纸镂空图案，成串挂在绳上</td>
+<td>入口与小路上方装饰</td>
+</tr>
+<tr>
+<td>蓝色布棚</td>
+<td>蓝色塑料布由木杆撑起</td>
+<td>墓区装饰，增加电影辨识度</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>家族墓碑名字（建议沿用电影中 Rivera 家族成员）：</strong> 家族墓 A：Imelda Rivera；家族墓 B：Julio Rivera；家族墓 C：Óscar &amp; Felipe Rivera。</p>
+<h2 id="s7">7. 游戏流程与场景交互逻辑</h2>
+<p>整局游戏是一条线性任务链：每个环节完成后才会解锁下一个。唯一的分支是扫墓：3 座家族墓至少完成 1 座即可推进，其余可选。</p>
+<figure class="diagram"><div class="scroll"><svg viewBox="0 0 760 420" role="img" aria-label="游戏流程" font-family="inherit"><defs><marker id="fa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--edge)"/></marker></defs><text x="24" y="34" text-anchor="start" font-size="15" font-weight="600" fill="var(--ink)">12 个环节串起整局游戏，拨弦是从生者世界到亡灵世界的转折点</text><path d="M184.0 112H208.0" fill="none" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#fa)"/><path d="M368.0 112H392.0" fill="none" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#fa)"/><path d="M552.0 112H576.0" fill="none" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#fa)"/><path d="M656 148.0V188.0" fill="none" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#fa)"/><path d="M576.0 224H552.0" fill="none" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#fa)"/><path d="M392.0 224H368.0" fill="none" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#fa)"/><path d="M208.0 224H184.0" fill="none" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#fa)"/><path d="M104 260.0V300.0" fill="none" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#fa)"/><path d="M184.0 336H208.0" fill="none" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#fa)"/><path d="M368.0 336H392.0" fill="none" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#fa)"/><path d="M552.0 336H576.0" fill="none" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#fa)"/><rect x="24.0" y="76.0" width="160" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25"/><text x="104" y="106" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">开始页</text><text x="104" y="128" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">点击 Start · 加载</text><rect x="208.0" y="76.0" width="160" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25" stroke-dasharray="5 4"/><text x="288" y="106" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">进入墓园</text><text x="288" y="128" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">开场镜头 · 拱门内出生</text><rect x="392.0" y="76.0" width="160" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25"/><text x="472" y="106" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">寻找家族墓</text><text x="472" y="128" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">走近墓碑 · 按 E 读名</text><rect x="576.0" y="76.0" width="160" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25"/><text x="656" y="106" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">扫墓</text><text x="656" y="128" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">擦碑 献花 点烛 供品</text><rect x="576.0" y="188.0" width="160" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25"/><text x="656" y="218" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">花瓣小路亮起</text><text x="656" y="240" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">完成一座 · 教堂门开</text><rect x="392.0" y="188.0" width="160" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25"/><text x="472" y="218" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">进入教堂</text><text x="472" y="240" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">沿花瓣小路走进大门</text><rect x="208.0" y="188.0" width="160" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25"/><text x="288" y="218" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">取下吉他</text><text x="288" y="240" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">按 E 取下墙上吉他</text><rect x="24.0" y="188.0" width="160" height="72" rx="8" fill="var(--marigold)" fill-opacity="0.15" stroke="var(--marigold)" stroke-width="2"/><text x="104" y="218" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">拨弦</text><text x="104" y="240" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">鼠标左键点击</text><rect x="24.0" y="300.0" width="160" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25" stroke-dasharray="5 4"/><text x="104" y="330" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">过场：花瓣腾起</text><text x="104" y="352" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">橙光包裹 Miguel</text><rect x="208.0" y="300.0" width="160" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25" stroke-dasharray="5 4"/><text x="288" y="330" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">过场：路人穿身</text><text x="288" y="352" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">头顶斜后方镜头</text><rect x="392.0" y="300.0" width="160" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25"/><text x="472" y="330" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">亡灵世界漫步</text><text x="472" y="352" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">自由走动 · 看见亡灵</text><rect x="576.0" y="300.0" width="160" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25" stroke-dasharray="5 4"/><text x="656" y="330" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">To be continued</text><text x="656" y="352" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">走出拱门 · 黑场</text><rect x="24" y="392" width="22" height="14" rx="3" fill="none" stroke="var(--edge)"/><text x="54" y="403" text-anchor="start" font-size="11.5" fill="var(--ink-soft)">玩家操作</text><rect x="150" y="392" width="22" height="14" rx="3" fill="none" stroke="var(--edge)" stroke-dasharray="5 4"/><text x="180" y="403" text-anchor="start" font-size="11.5" fill="var(--ink-soft)">过场 / 镜头动画（不可操作）</text><rect x="400" y="392" width="22" height="14" rx="3" fill="var(--marigold)" fill-opacity="0.15" stroke="var(--marigold)" stroke-width="2"/><text x="430" y="403" text-anchor="start" font-size="11.5" fill="var(--ink-soft)">转折点</text></svg></div><figcaption>游戏流程 · 12 个环节</figcaption></figure>
+<h3 id="s7-1">7.1 各环节交互规则</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>环节</th>
+<th>位置</th>
+<th>玩家操作</th>
+<th>系统反馈</th>
+<th>解锁下一步的条件</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 开始页</td>
+<td>网页</td>
+<td>点击 Start</td>
+<td>显示加载进度；提示点击画面锁定鼠标</td>
+<td>加载完成并点击画面</td>
+</tr>
+<tr>
+<td>2 进入墓园</td>
+<td>入口拱门</td>
+<td>无（约 8 秒开场镜头，可按空格跳过）</td>
+<td>镜头从高处俯瞰满场烛光，缓缓降到 Miguel 身后；屏幕出现第一个目标</td>
+<td>开场结束，控制权交给玩家</td>
+</tr>
+<tr>
+<td>3 寻找家族墓</td>
+<td>两侧墓区</td>
+<td>走近任意墓碑（2 m 内），按 E</td>
+<td>弹出墓碑名字卡片；普通墓显示陌生名字，家族墓显示 Rivera 姓氏并高亮为可扫墓</td>
+<td>找到任意一座家族墓</td>
+</tr>
+<tr>
+<td>4 扫墓</td>
+<td>家族墓 + 花摊</td>
+<td>按 7.2 的 4 个步骤依次完成</td>
+<td>每步完成后墓前对应物件出现，目标清单打勾</td>
+<td>同一座墓的 4 步全部完成</td>
+</tr>
+<tr>
+<td>5 花瓣小路亮起</td>
+<td>家族墓 → 中央石板路 → 教堂</td>
+<td>无（约 4 秒短镜头）</td>
+<td>墓前散落的花瓣连成一条发光小路，镜头顺着小路滑向教堂，教堂大门缓缓打开</td>
+<td>镜头结束后自动推进</td>
+</tr>
+<tr>
+<td>6 进入教堂</td>
+<td>教堂大门</td>
+<td>沿小路走到教堂，走进门内</td>
+<td>进门时音乐与环境音变安静，色调由暖橙转为冷蓝</td>
+<td>进入教堂触发区</td>
+</tr>
+<tr>
+<td>7 取下吉他</td>
+<td>教堂后墙</td>
+<td>可选：在画像前按 E 查看画像；必须：站到吉他下方按 E</td>
+<td>Miguel 爬上石棺、踮脚取下吉他并抱在怀里；屏幕提示点击鼠标弹奏</td>
+<td>取下吉他动画播完</td>
+</tr>
+<tr>
+<td>8 拨弦</td>
+<td>教堂中央</td>
+<td>点击鼠标左键</td>
+<td>Miguel 小心拨下一个和弦</td>
+<td>点击后立即进入过场</td>
+</tr>
+<tr>
+<td>9 过场：花瓣腾起</td>
+<td>教堂内</td>
+<td>无</td>
+<td>满地花瓣以 Miguel 为中心向外炸开并腾空，光线闪烁，Miguel 全身泛起橙光</td>
+<td>自动衔接下一段</td>
+</tr>
+<tr>
+<td>10 过场：路人穿身</td>
+<td>教堂内</td>
+<td>无</td>
+<td>路人从大门走进，直接穿过 Miguel 走到画像前放下花；Miguel 低头看自己发光的双手；镜头见第 8.3 节</td>
+<td>过场结束，切换为亡灵世界，控制权交还玩家</td>
+</tr>
+<tr>
+<td>11 亡灵世界漫步</td>
+<td>教堂 → 墓园</td>
+<td>自由行走（吉他背在背上），走出教堂</td>
+<td>墓园里出现骷髅亡灵；花瓣微微发光；目标提示走向入口</td>
+<td>Miguel 进入入口拱门触发区</td>
+</tr>
+<tr>
+<td>12 To be continued</td>
+<td>入口拱门</td>
+<td>无</td>
+<td>镜头从身后拉远，画面淡出为黑场，显示 “To be continued…” 与版权声明；提供 Play again 按钮</td>
+<td>—</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="s7-2">7.2 扫墓的 4 个步骤</h3>
+<p>灵感来自亡灵节传统：家人会先清洁墓碑，再用万寿菊与蜡烛装饰，并摆上逝者照片、糖骷髅与食物作为祭品。顺序固定，前一步完成后下一步的交互提示才会出现。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>步骤</th>
+<th>操作</th>
+<th>Miguel 动作</th>
+<th>墓前变化</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1 擦拭墓碑</td>
+<td>在墓碑前按住 E 约 2 秒（屏幕显示环形进度）</td>
+<td>蹲下，用衣袖擦拭墓碑</td>
+<td>灰尘与落叶消失，墓碑变干净、名字清晰</td>
+</tr>
+<tr>
+<td>2 献花</td>
+<td>走到花摊按 E 拿一束万寿菊，回到墓前按 E</td>
+<td>双手捧花并放下</td>
+<td>墓前出现万寿菊花束，周围散落花瓣</td>
+</tr>
+<tr>
+<td>3 点烛</td>
+<td>在墓前按 E</td>
+<td>蹲下点燃蜡烛</td>
+<td>一组蜡烛依次亮起，墓碑被暖光照亮</td>
+</tr>
+<tr>
+<td>4 摆上照片与供品</td>
+<td>在墓前按 E</td>
+<td>小心摆放物品</td>
+<td>出现黑白老照片、糖骷髅与亡灵面包；伴随一声轻快的吉他音效</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>可选内容：</strong> 完成第一座家族墓后，花瓣小路亮起、教堂门打开；玩家仍可继续为另外两座扫墓。三座都完成后，亡灵世界中这三位祖先的骷髅会出现在各自的墓前（彩蛋）。</p>
+<h3 id="s7-3">7.3 通用交互规则</h3>
+<ul>
+<li><strong>交互提示</strong>：Miguel 距可交互物 2 m 内且面朝它时，物体出现柔和的暖色描边，屏幕下方显示按键提示（如 “[E] Clean the headstone”）。</li>
+<li><strong>同时只显示一个提示</strong>：多个物体重叠时，取最接近画面中心的一个。</li>
+<li><strong>交互动画期间锁定移动</strong>，动画结束后立即恢复控制；镜头仍可转动。</li>
+<li><strong>教堂门在扫墓完成前无法进入</strong>：靠近时提示 “The chapel is closed. Honor your family first.”</li>
+<li><strong>玩家走不出墓园</strong>：生者世界中入口拱门外有空气墙，靠近时提示 “Not yet. Your family is waiting.”；亡灵世界中这里变为结局触发区。</li>
+<li><strong>背景角色不可交互</strong>，但有碰撞体避免 Miguel 穿过（亡灵世界中生者无碰撞，Miguel 可以穿过他们，延续过场的设定）。</li>
+</ul>
+<h2 id="s8">8. 操作与镜头</h2>
+<p>操作保持最少：移动、跑、交互、看目标，外加弹吉他时的一次鼠标点击。镜头在游玩时由鼠标自由控制，剧情节点自动切换为过场镜头。</p>
+<h3 id="s8-1">8.1 键位</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>按键</th>
+<th>功能</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>W A S D / 方向键</td>
+<td>移动</td>
+<td>方向相对于镜头朝向</td>
+</tr>
+<tr>
+<td>按住 Shift</td>
+<td>跑</td>
+<td>走 1.6 m/s，跑 4.5 m/s；无耐力限制</td>
+</tr>
+<tr>
+<td>E</td>
+<td>交互</td>
+<td>读墓碑、拿花、献花、点烛、摆供品、看画像、取吉他；擦墓碑需按住</td>
+</tr>
+<tr>
+<td>Tab</td>
+<td>查看目标</td>
+<td>按住显示目标面板，松开隐藏</td>
+</tr>
+<tr>
+<td>鼠标移动</td>
+<td>转动视角</td>
+<td>需先点击画面锁定鼠标</td>
+</tr>
+<tr>
+<td>鼠标左键</td>
+<td>拨弦</td>
+<td>仅在“弹奏”环节有效</td>
+</tr>
+<tr>
+<td>空格</td>
+<td>跳过过场</td>
+<td>过场中屏幕右下角提示 “Hold Space to skip”</td>
+</tr>
+<tr>
+<td>Esc</td>
+<td>暂停 / 释放鼠标</td>
+<td>打开暂停菜单</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="s8-2">8.2 自由视角（参考 littleprince.dev）</h3>
+<ul>
+<li><strong>锁定鼠标</strong>：进入游戏后屏幕中央提示 “Click to look around”，点击画面后鼠标被锁定并隐藏，移动鼠标即转动视角；按 Esc 释放鼠标并暂停，再次点击画面恢复。</li>
+<li><strong>镜头参数</strong>：第三人称跟随，镜头位于 Miguel 后方约 3.5 m、肩高略上方；水平可 360° 转动，俯仰限制在 −20° 到 60°，避免看到地面以下或正上方。</li>
+<li><strong>室内自动调整</strong>：进入教堂后镜头距离缩短到约 2.5 m，避免穿墙；被墙或墓碑遮挡时平滑拉近。</li>
+<li><strong>角色朝向</strong>：Miguel 朝移动方向转身，停下时保持朝向；镜头不会自动回正。</li>
+<li><strong>灵敏度</strong>：暂停菜单中可调（默认中档）。</li>
+</ul>
+<h3 id="s8-3">8.3 过场镜头</h3>
+<p>过场使用 Unity Timeline + Cinemachine 在引擎内实时播放，观感与视频一致，但不需要额外下载视频文件，画面与游玩时无缝衔接。过场中隐藏所有 UI，画面上下加电影黑边。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>过场</th>
+<th>时长</th>
+<th>镜头</th>
+<th>画面内容</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>C0 开场</td>
+<td>约 8 秒</td>
+<td>从墓园上空高处俯瞰，缓缓下降并推进，最终落到 Miguel 身后的游玩镜头位置</td>
+<td>满场烛光、教堂远景、入口拱门下的 Miguel</td>
+</tr>
+<tr>
+<td>C1 花瓣小路</td>
+<td>约 4 秒</td>
+<td>从完成扫墓的家族墓出发，贴地沿发光花瓣小路快速滑行至教堂大门</td>
+<td>花瓣依次亮起，教堂大门缓缓打开，门缝透出蓝光</td>
+</tr>
+<tr>
+<td>C2 拨弦</td>
+<td>约 6 秒</td>
+<td>先给 Miguel 拨弦的手部特写，随后切到低机位，绕 Miguel 半圈环绕</td>
+<td>满地花瓣以 Miguel 为中心炸开、在月光光束中翻飞；Miguel 全身泛起橙光</td>
+</tr>
+<tr>
+<td>C3 路人穿身</td>
+<td>约 10 秒</td>
+<td><strong>Miguel 头顶斜后上方</strong>：镜头位于头顶上方约 0.8 m、身后约 1.2 m，向前下方俯视约 25°，画面中可同时看到 Miguel 的头和肩、前方的画像，以及画面边缘的教堂大门方向</td>
+<td>见下方分镜</td>
+</tr>
+<tr>
+<td>C4 结尾</td>
+<td>约 6 秒</td>
+<td>从 Miguel 身后缓缓拉远升高，俯瞰整个亡灵世界的墓园</td>
+<td>画面淡出为黑场，显示 “To be continued…”</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>C3 路人穿身分镜：</strong></p>
+<ol>
+<li>0–2 秒：Miguel 抱着吉他，背对大门、面向画像站着，身上微微发光；画外传来由远及近的脚步声。</li>
+<li>2–5 秒：路人从镜头下方（Miguel 身后）走入画面，沿直线走向画像，<strong>径直穿过 Miguel 的身体</strong>：两人身体重叠的瞬间，Miguel 的轮廓光闪烁一下，周围花瓣被轻轻带起，路人毫无察觉，继续向前。</li>
+<li>5–7 秒：路人走到画像前，弯腰放下万寿菊花束，低头祈祷。</li>
+<li>7–10 秒：Miguel 身体一颤，慢慢低头看向自己发着橙光的双手，镜头保持俯视角度略微推近，让玩家和 Miguel 同时意识到发生了什么。之后控制权交还玩家，路人继续停留在画像前祈祷。</li>
+</ol>
+<h2 id="s9">9. 任务系统与英文 UI 文案</h2>
+<p>界面全部为英文。HUD 极简：平时只在屏幕下方显示交互提示，目标面板按住 Tab 才出现；新目标出现时在左上角淡入 3 秒后淡出。</p>
+<h3 id="s9-1">9.1 目标面板（按住 Tab）</h3>
+<p>面板显示当前目标与已完成目标（打勾、变灰），未解锁的目标不显示。</p>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>顺序</th>
+<th>目标文案</th>
+<th>子项 / 说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Find your family’s graves</td>
+<td>Read the names on the headstones</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Honor your family</td>
+<td>☐ Clean the headstone ☐ Offer marigolds ☐ Light the candles ☐ Place the photo and offerings</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Follow the marigold path to the chapel</td>
+<td>—</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Take down the guitar</td>
+<td>—</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Play the guitar</td>
+<td>—</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Find your way out of the cemetery</td>
+<td>亡灵世界中出现</td>
+</tr>
+<tr>
+<td>可选</td>
+<td>Honor the rest of your family (1/3)</td>
+<td>扫墓第一座后出现，计数随完成更新</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="s9-2">9.2 交互提示</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>场合</th>
+<th>提示文案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>普通墓碑 / 家族墓碑</td>
+<td>[E] Read the name</td>
+</tr>
+<tr>
+<td>家族墓：步骤 1</td>
+<td>[Hold E] Clean the headstone</td>
+</tr>
+<tr>
+<td>花摊</td>
+<td>[E] Take marigolds</td>
+</tr>
+<tr>
+<td>家族墓：步骤 2</td>
+<td>[E] Offer the marigolds</td>
+</tr>
+<tr>
+<td>家族墓：步骤 3</td>
+<td>[E] Light the candles</td>
+</tr>
+<tr>
+<td>家族墓：步骤 4</td>
+<td>[E] Place the photo and offerings</td>
+</tr>
+<tr>
+<td>画像</td>
+<td>[E] Look at the portrait</td>
+</tr>
+<tr>
+<td>吉他</td>
+<td>[E] Take the guitar</td>
+</tr>
+<tr>
+<td>取下吉他后</td>
+<td>[Click] Strum the guitar</td>
+</tr>
+<tr>
+<td>教堂门未开时靠近</td>
+<td>The chapel is closed. Honor your family first.</td>
+</tr>
+<tr>
+<td>生者世界中靠近入口</td>
+<td>Not yet. Your family is waiting.</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="s9-3">9.3 页面与菜单文案</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>位置</th>
+<th>文案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>开始页标题</td>
+<td>Remember Me（游戏名，可调整）</td>
+</tr>
+<tr>
+<td>开始页副标题</td>
+<td>A night among the marigolds</td>
+</tr>
+<tr>
+<td>开始按钮</td>
+<td>Click to begin</td>
+</tr>
+<tr>
+<td>设备提示</td>
+<td>Best experienced in Chrome or Edge on a desktop computer.</td>
+</tr>
+<tr>
+<td>加载</td>
+<td>Lighting the candles… 0%</td>
+</tr>
+<tr>
+<td>版权声明</td>
+<td>Fan-made, non-commercial portfolio project. Coco © Disney / Pixar.</td>
+</tr>
+<tr>
+<td>进入游戏提示</td>
+<td>Click to look around</td>
+</tr>
+<tr>
+<td>暂停菜单</td>
+<td>Paused / Resume / Mouse sensitivity / Volume / Restart</td>
+</tr>
+<tr>
+<td>过场跳过</td>
+<td>Hold Space to skip</td>
+</tr>
+<tr>
+<td>结尾</td>
+<td>To be continued… / Play again</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>墓碑名字卡片：</strong> 普通墓显示随机的西班牙语人名；家族墓显示 “Imelda Rivera”“Julio Rivera”“Óscar &amp; Felipe Rivera”，并附一句 “Rivera family”，提示这是要扫的墓。</p>
+<h2 id="s10">10. 灯光、特效与音频</h2>
+<h3 id="s10-1">10.1 灯光</h3>
+<ul>
+<li><strong>主光</strong>：一盏低角度冷蓝色方向光模拟月光；天空盒为深蓝到紫色渐变加稀疏星星。</li>
+<li><strong>烛光</strong>：场景中有上千支蜡烛，但网页端只放 6–8 盏真实点光源（跟随 Miguel 附近的烛群动态启用），其余蜡烛用自发光材质 + 火焰贴片 + 光晕贴图模拟，并烘焙进光照贴图。</li>
+<li><strong>教堂内</strong>：月光从侧窗射入，用半透明光柱模型模拟体积光，地面花瓣被光柱照亮的部分更亮。</li>
+<li><strong>后期</strong>：Bloom（让烛光与 Miguel 的橙光晕开）、轻微暗角、色彩分级；亡灵世界切换为偏紫、饱和度更高的色彩配置。</li>
+</ul>
+<h3 id="s10-2">10.2 特效</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>特效</th>
+<th>出现时机</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>烛火</td>
+<td>全程</td>
+<td>小火焰轻微摇曳闪烁，部分蜡烛有细烟</td>
+</tr>
+<tr>
+<td>飘落花瓣</td>
+<td>全程</td>
+<td>空中少量花瓣缓慢飘落、随风打转</td>
+</tr>
+<tr>
+<td>地面花瓣</td>
+<td>全程</td>
+<td>Miguel 跑过时脚边花瓣被轻轻踢起</td>
+</tr>
+<tr>
+<td>扫墓完成</td>
+<td>每座家族墓完成时</td>
+<td>墓前一圈暖光扩散，伴随少量上升光点</td>
+</tr>
+<tr>
+<td>花瓣小路</td>
+<td>扫墓完成后</td>
+<td>花瓣依次亮起的发光路径，从家族墓延伸到教堂门口</td>
+</tr>
+<tr>
+<td>花瓣腾起</td>
+<td>拨弦瞬间</td>
+<td>以 Miguel 为中心的环形冲击，满地花瓣炸开并在空中翻飞 2–3 秒后缓慢落下，参考截图中花瓣绕身飞舞的画面</td>
+</tr>
+<tr>
+<td>亡灵光晕</td>
+<td>拨弦后全程</td>
+<td>Miguel 全身橙色边缘光 + 柔和辉光 + 偶尔飘出的橙色光点</td>
+</tr>
+<tr>
+<td>穿身效果</td>
+<td>过场 C3</td>
+<td>路人与 Miguel 重叠瞬间，Miguel 的轮廓光闪烁一下，周围花瓣被带起</td>
+</tr>
+<tr>
+<td>亡灵世界花瓣</td>
+<td>亡灵世界</td>
+<td>地面花瓣变为自发光亮橙色，间或闪烁</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="s10-3">10.3 音频</h3>
+<ul>
+<li><strong>音乐</strong>：使用电影原声，按环节分配。墓园探索用温暖轻柔的墨西哥吉他配乐；进入教堂后音乐淡出，只留环境音；拨弦后接原声中情绪渐强的段落；亡灵世界用带神秘感的配乐；结尾用《Remember Me》的器乐版。具体曲目由你从原声中挑选。</li>
+<li><strong>环境音</strong>：远处人群低语、风声、剪纸旗沙沙声、烛火噼啪声；教堂内有轻微回声。</li>
+<li><strong>动作音效</strong>：土路/石板/花瓣上的脚步声、擦拭声、划火柴声、放下物品声、教堂门开启声。</li>
+<li><strong>吉他音效</strong>：一声清晰的古典吉他和弦，余音拉长，作为情绪转折点。</li>
+<li><strong>亡灵世界</strong>：叠加一层轻微的空灵音色；生者的声音略带闷感，暗示 Miguel 已不在同一个世界。</li>
+</ul>
+<h2 id="s11">11. 3D 资产清单与 Tripo 提示词</h2>
+<p>整个游戏约 35 个独立模型，大量墓、蜡烛和花通过实例化重复摆放。Tripo 擅长生成单个物体，所以每个资产单独生成；地面、花瓣、剪纸旗等扁平元素直接在 Unity 中用贴图与粒子制作，不走 Tripo。网页端面数需克制，面数预算以单个模型计。</p>
+<p><strong>统一风格后缀（每条提示词末尾都加上）：</strong> <code>Pixar-style stylized 3D, soft rounded shapes, hand-painted texture feel, Day of the Dead Mexican setting</code></p>
+<h3 id="s11-1">11.1 人物</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>资产</th>
+<th>数量</th>
+<th>面数预算</th>
+<th>Tripo 提示词</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Miguel</td>
+<td>1</td>
+<td>20–30k</td>
+<td><code>12-year-old Mexican boy, big head cartoon proportions, messy short black hair with a cowlick on top, big brown eyes, thick eyebrows, brown skin, open dark red zip-up hoodie with a white stripe down each sleeve, white tank top, blue jeans, worn brown shoes, A-pose, full body</code></td>
+</tr>
+<tr>
+<td>老奶奶</td>
+<td>1</td>
+<td>10–15k</td>
+<td><code>elderly Mexican woman, gray hair in a bun, long dark skirt, embroidered blouse, rebozo shawl over shoulders, A-pose, full body</code></td>
+</tr>
+<tr>
+<td>中年男子（兼作穿身路人）</td>
+<td>1</td>
+<td>10–15k</td>
+<td><code>middle-aged Mexican man, short black hair, mustache, white shirt under a dark jacket, dark trousers, A-pose, full body</code></td>
+</tr>
+<tr>
+<td>中年女子</td>
+<td>1</td>
+<td>10–15k</td>
+<td><code>middle-aged Mexican woman, black hair in a ponytail, simple cardigan over a dress, A-pose, full body</code></td>
+</tr>
+<tr>
+<td>孩子</td>
+<td>1</td>
+<td>8–12k</td>
+<td><code>young Mexican girl about 7 years old, braided black hair, colorful dress, A-pose, full body</code></td>
+</tr>
+<tr>
+<td>戴草帽老人</td>
+<td>1</td>
+<td>10–15k</td>
+<td><code>old Mexican man, straw sombrero, white mustache, plain shirt with suspenders, A-pose, full body</code></td>
+</tr>
+<tr>
+<td>骷髅亡灵 ×3</td>
+<td>3</td>
+<td>8–12k</td>
+<td><code>cartoon skeleton character, ivory bones, skull decorated with colorful sugar skull painted patterns of flowers and swirls, wearing [long dress and shawl / suit and hat / poncho], A-pose, full body</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="s11-2">11.2 建筑与大型场景</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>资产</th>
+<th>数量</th>
+<th>面数预算</th>
+<th>Tripo 提示词</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>教堂外观</td>
+<td>1</td>
+<td>40–60k</td>
+<td><code>small white baroque Mexican chapel mausoleum, two short square towers with paired columns, central tall arched niche with a bust statue, carved stone guitars and scrolls on top, arched dark wooden door with iron grille, Spanish inscription above the door, marigold garlands on the facade</code></td>
+</tr>
+<tr>
+<td>教堂内部</td>
+<td>1</td>
+<td>30–50k</td>
+<td><code>interior of a small white marble chapel, checkered marble floor, raised white stone tomb on steps with carved music notes, back wall with fluted pilasters and a frame space, tall arched windows on both sides, shell-shaped wall niches</code></td>
+</tr>
+<tr>
+<td>入口拱门</td>
+<td>1</td>
+<td>5–10k</td>
+<td><code>whitewashed plaster cemetery entrance arch with a wavy rounded top, carved arched lettering, slightly worn and chipped walls</code></td>
+</tr>
+<tr>
+<td>普通墓体 ×8</td>
+<td>8</td>
+<td>1–3k</td>
+<td><code>raised concrete Mexican grave with a cross-shaped headstone, painted [pale blue / pink / cream / white], weathered and stained</code>（每种变体换颜色与墓碑形状：十字架、圆顶碑、小天使雕像）</td>
+</tr>
+<tr>
+<td>家族小祭室 ×2</td>
+<td>2</td>
+<td>3–6k</td>
+<td><code>small whitewashed family mausoleum shaped like a tiny house, iron gate door, small cross on the roof</code></td>
+</tr>
+<tr>
+<td>家族墓（扫墓用）</td>
+<td>1</td>
+<td>3–5k</td>
+<td><code>raised concrete Mexican grave with a rounded headstone and a small offering ledge in front, dusty, no decorations</code></td>
+</tr>
+<tr>
+<td>大树</td>
+<td>2</td>
+<td>5–10k</td>
+<td><code>large old gnarled tree with thick roots and spreading branches, sparse leaves, night silhouette</code></td>
+</tr>
+<tr>
+<td>围墙模块</td>
+<td>1</td>
+<td>1–2k</td>
+<td><code>low whitewashed adobe cemetery wall segment, worn plaster</code></td>
+</tr>
+<tr>
+<td>背景房屋</td>
+<td>2</td>
+<td>2–4k</td>
+<td><code>small Mexican town house, flat roof, adobe walls, warm lit windows</code></td>
+</tr>
+<tr>
+<td>蓝色布棚</td>
+<td>1</td>
+<td>1–2k</td>
+<td><code>blue plastic tarp canopy held up by wooden poles over a grave</code></td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="s11-3">11.3 道具</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>资产</th>
+<th>数量</th>
+<th>面数预算</th>
+<th>Tripo 提示词</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>白色吉他</td>
+<td>1</td>
+<td>5–8k</td>
+<td><code>white classical acoustic guitar, ornate dark scroll patterns on the body, decorative rosette around the sound hole, white fretboard with silver frets, headstock carved in the shape of a stylized skull with two slot openings</code></td>
+</tr>
+<tr>
+<td>画像</td>
+<td>1</td>
+<td>2–4k</td>
+<td><code>ornate silver baroque picture frame with a portrait painting of a smiling man in a white charro suit and white wide-brimmed sombrero</code></td>
+</tr>
+<tr>
+<td>万寿菊花束</td>
+<td>1</td>
+<td>2–4k</td>
+<td><code>bouquet of bright orange marigold flowers with a few dark magenta cockscomb flowers</code></td>
+</tr>
+<tr>
+<td>蜡烛组</td>
+<td>3</td>
+<td>0.5–1k</td>
+<td><code>cluster of white pillar candles of different heights</code> / <code>red glass votive candle</code> / <code>tall thin taper candle</code></td>
+</tr>
+<tr>
+<td>糖骷髅</td>
+<td>1</td>
+<td>1k</td>
+<td><code>decorated sugar skull candy with pink, green, yellow and blue icing patterns</code></td>
+</tr>
+<tr>
+<td>亡灵面包</td>
+<td>1</td>
+<td>1k</td>
+<td><code>round pan de muerto sweet bread with crossed bone-shaped dough decorations and sugar on top</code></td>
+</tr>
+<tr>
+<td>老照片</td>
+<td>1</td>
+<td>0.5k</td>
+<td><code>small wooden frame with an old black and white family photo</code></td>
+</tr>
+<tr>
+<td>花摊</td>
+<td>1</td>
+<td>3–5k</td>
+<td><code>small wooden table with metal buckets full of orange marigolds and magenta cockscomb flowers</code></td>
+</tr>
+<tr>
+<td>铁灯笼</td>
+<td>1</td>
+<td>1–2k</td>
+<td><code>old wrought iron hanging lantern</code></td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>生成与处理要点：</strong> 人物统一用 A-pose 生成，方便 Auto-Rig Pro 绑定；Miguel 的脸是辨识度关键，Tripo 初模只作体块，五官和发型需要在 Blender 中人工精修，并以电影截图为参照。所有模型经第 12 节的 Blender CLI 流程清理、减面后再导入 Unity。</p>
+<h2 id="s12">12. 技术方案与工具链</h2>
+<h3 id="s12-1">12.1 生产工具链</h3>
+<figure class="diagram"><div class="scroll"><svg viewBox="0 0 760 332" role="img" aria-label="生产工具链" font-family="inherit"><defs><marker id="pa" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--edge)"/></marker></defs><text x="24" y="30" text-anchor="start" font-size="15" font-weight="600" fill="var(--ink)">Claude 通过 Blender CLI 与 Unity MCP 接入资产与引擎两端</text><path d="M156.0 136H172.0" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#pa)"/><path d="M300.0 136H316.0" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#pa)"/><path d="M444.0 136H460.0" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#pa)"/><path d="M588.0 136H604.0" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#pa)"/><path d="M236 100.0V80H524V100.0" fill="none" stroke="var(--edge)" stroke-width="1.25" marker-end="url(#pa)"/><text x="380" y="72" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">静态道具与场景直接导出</text><path d="M236 172.0V280H260.0M524 172.0V280H500.0" fill="none" stroke="var(--marigold)" stroke-width="1.25" stroke-dasharray="4 3"/><rect x="28.0" y="100.0" width="128" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25"/><text x="92" y="124" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">Tripo</text><text x="92" y="144" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">AI 生成初模</text><text x="92" y="160" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">导出 GLB/FBX</text><rect x="172.0" y="100.0" width="128" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25"/><text x="236" y="124" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">Blender CLI</text><text x="236" y="144" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">清理 · 减面</text><text x="236" y="160" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">UV · 烘焙 · LOD</text><rect x="316.0" y="100.0" width="128" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25"/><text x="380" y="124" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">Auto-Rig Pro</text><text x="380" y="144" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">绑骨 · 蒙皮</text><text x="380" y="160" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">导出 Unity FBX</text><rect x="460.0" y="100.0" width="128" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25"/><text x="524" y="124" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">Unity 6</text><text x="524" y="144" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">场景 · 逻辑 · 物理</text><text x="524" y="160" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">动画 · UI · 音频</text><rect x="604.0" y="100.0" width="128" height="72" rx="8" fill="none" stroke="var(--edge)" stroke-width="1.25"/><text x="668" y="124" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">打包发布</text><text x="668" y="144" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">Unity Web 构建</text><text x="668" y="160" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">部署到 .dev 网站</text><rect x="260.0" y="252.0" width="240" height="56" rx="8" fill="var(--marigold)" fill-opacity="0.12" stroke="var(--marigold)" stroke-width="2"/><text x="380" y="276" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">Claude</text><text x="380" y="296" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">写 C# 与脚本 · 批处理 · 读报错排查</text><text x="244" y="226" text-anchor="start" font-size="11.5" fill="var(--ink-soft)">写并运行 Blender 脚本</text><text x="516" y="226" text-anchor="end" font-size="11.5" fill="var(--ink-soft)">经官方 MCP 操作编辑器</text></svg></div><figcaption>生产工具链 · Tripo → Blender → Unity → 网页</figcaption></figure>
+<ul>
+<li><strong>Tripo</strong>：按第 11 节提示词生成初模，导出 GLB / FBX。</li>
+<li><strong>Blender + CLI</strong>：Claude 编写脚本，用 <code>blender -b -P 脚本.py</code> 批量完成统一比例与朝向、清理碎面、减面到预算、生成 LOD 与简易碰撞体、导出 FBX；人物另行人工精修面部与拓扑。</li>
+<li><strong>Auto-Rig Pro</strong>：为 Miguel 和人形配角绑骨蒙皮，用 Unity 预设导出为 Humanoid，同一套走跑动作可在所有人形角色间复用；骷髅亡灵同样走 Humanoid 骨架。</li>
+<li><strong>Unity 6 + 官方 MCP</strong>：Claude 通过 AI Assistant 包中的 Unity MCP 搭建场景、摆放资产、挂组件、配置任务与交互、搭 Timeline 过场、运行测试。官方 MCP 目前为公开测试版，需要 Unity AI 试用或订阅；开源 MCP（如 CoplayDev/unity-mcp）作为备选。</li>
+<li><strong>Git + Git LFS</strong>：管理工程，FBX、贴图、音频走 LFS。</li>
+</ul>
+<h3 id="s12-2">12.2 Unity 工程方案</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>模块</th>
+<th>方案</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>渲染</td>
+<td>URP，烘焙光照贴图 + 光照探针，少量实时点光源；后期 Bloom、暗角、色彩分级</td>
+</tr>
+<tr>
+<td>两个世界</td>
+<td>同一个场景：亡灵角色与发光花瓣放在单独图层，弹奏后启用；切换后期配置实现偏紫色调</td>
+</tr>
+<tr>
+<td>角色控制</td>
+<td>CharacterController + 自研第三人称移动脚本；Input System 读取键鼠</td>
+</tr>
+<tr>
+<td>镜头</td>
+<td>Cinemachine：游玩时为自由环绕镜头，过场时由 Timeline 切换虚拟相机</td>
+</tr>
+<tr>
+<td>交互与任务</td>
+<td>每个可交互物挂一个 Interactable 组件；任务由一个线性任务管理器按顺序解锁，状态只存在内存中（无存档）</td>
+</tr>
+<tr>
+<td>过场</td>
+<td>Timeline 实时播放，可按住空格跳过</td>
+</tr>
+<tr>
+<td>背景角色</td>
+<td>循环动画 + 少量按路径行走；不使用复杂 AI</td>
+</tr>
+<tr>
+<td>粒子</td>
+<td>VFX 用 Shuriken 粒子系统（WebGL 不支持 VFX Graph）</td>
+</tr>
+<tr>
+<td>音频</td>
+<td>音乐用流式加载的压缩音频，音效预加载</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="s12-3">12.3 网页发布</h3>
+<ul>
+<li><strong>构建目标</strong>：Unity 6 Web 平台，默认 WebGL 2；WebGPU 可作为实验选项测试。</li>
+<li><strong>网页外壳</strong>：自定义 HTML 模板，参照 littleprince.dev：开始页主视觉 + 标题 + “Click to begin” + 设备提示；点击后显示加载进度；画布全屏。</li>
+<li><strong>鼠标锁定</strong>：使用浏览器 Pointer Lock，点击画布进入、Esc 退出。</li>
+<li><strong>托管</strong>：静态托管（如 Cloudflare Pages、Vercel、Netlify）+ 自有 .dev 域名；.dev 域名强制 HTTPS，托管平台默认满足。构建产物使用 Brotli 压缩并配置对应响应头。</li>
+<li><strong>移动端</strong>：检测到手机或平板时显示 “Please visit on a desktop computer.”，不加载游戏。</li>
+</ul>
+<h3 id="s12-4">12.4 性能指标</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>指标</th>
+<th>目标</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>首次下载体积（压缩后）</td>
+<td>≤ 80 MB</td>
+</tr>
+<tr>
+<td>加载时间（50 Mbps 网络）</td>
+<td>≤ 20 秒</td>
+</tr>
+<tr>
+<td>帧率</td>
+<td>主流笔记本（如 M1 MacBook Air、RTX 3050 笔记本）1080p 稳定 60 fps；集成显卡不低于 30 fps</td>
+</tr>
+<tr>
+<td>同屏三角面</td>
+<td>≤ 100 万</td>
+</tr>
+<tr>
+<td>内存</td>
+<td>浏览器标签页 ≤ 1.5 GB</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="s13">13. 里程碑、验收与风险</h2>
+<p>按 1 人 + Claude 估算，约 9–10 周完成。每个小目标都在 .dev 网站上产出一个可以打开试玩的版本，问题能尽早在真实浏览器里暴露。</p>
+<h3 id="s13-1">13.1 小目标</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>小目标</th>
+<th>时长</th>
+<th>交付物</th>
+<th>验收标准</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>G0 工具链与网页外壳</td>
+<td>1 周</td>
+<td>安装全部工具，Claude 接入 Unity MCP；Unity Web 空项目带开始页与加载页部署到 .dev 网站</td>
+<td>网址能打开，点击开始后进入一个空场景，鼠标锁定可用</td>
+</tr>
+<tr>
+<td>G1 Miguel 动起来</td>
+<td>2 周</td>
+<td>Miguel 经 Tripo → Blender 精修 → Auto-Rig Pro 绑定后导入；走、跑、待机动画；自由视角镜头</td>
+<td>在灰盒墓园中移动与转视角流畅，无滑步、无穿模</td>
+</tr>
+<tr>
+<td>G2 墓园白盒与扫墓</td>
+<td>2 周</td>
+<td>按第 4.1 节布局搭建白盒；3 座家族墓的完整扫墓交互；目标面板；花瓣小路与教堂开门</td>
+<td>第 7 节环节 1–6 可从头走通</td>
+</tr>
+<tr>
+<td>G3 教堂与转折</td>
+<td>2 周</td>
+<td>教堂内外模型；取吉他、拨弦；过场 C2、C3；亡灵世界切换与结尾</td>
+<td>第 7 节全部 12 个环节可从头玩到 “To be continued”</td>
+</tr>
+<tr>
+<td>G4 美术与氛围</td>
+<td>2 周</td>
+<td>全部资产替换白盒；灯光、烛光、花瓣与亡灵光效；音乐与音效</td>
+<td>画面与电影截图并排对比时，色调与氛围一致</td>
+</tr>
+<tr>
+<td>G5 打磨与上线</td>
+<td>1 周</td>
+<td>性能优化、浏览器兼容测试、文案校对、版权声明</td>
+<td>满足 13.2 全部验收标准</td>
+</tr>
+</tbody>
+</table></div>
+<h3 id="s13-2">13.2 验收标准</h3>
+<ul>
+<li>首次打开到可以操作 ≤ 30 秒（50 Mbps 网络）</li>
+<li>一位没看过说明的新玩家能在 10 分钟内独立通关</li>
+<li>第 7 节 12 个环节全部按顺序触发，没有可以卡住的状态</li>
+<li>至少完成 1 座扫墓前教堂无法进入；完成后花瓣小路与开门正确触发</li>
+<li>过场 C3 中路人从 Miguel 身后走入并穿过其身体，镜头位于头顶斜后上方</li>
+<li>主流笔记本 1080p 稳定 60 fps，Chrome 与 Edge 最新版均正常运行</li>
+<li>所有界面文字为英文，开始页与结尾显示版权声明</li>
+</ul>
+<h3 id="s13-3">13.3 主要风险</h3>
+<div class="table-wrap"><table>
+<thead>
+<tr>
+<th>风险</th>
+<th>影响</th>
+<th>应对</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>使用电影角色、场景与原声</td>
+<td>公开发布后版权方可能要求下架</td>
+<td>明确非商业、不收费、不投广告；保留版权声明；准备一套原创或免版权音乐作为替换</td>
+</tr>
+<tr>
+<td>Tripo 生成的 Miguel 不够像</td>
+<td>作品集说服力下降</td>
+<td>Tripo 只作体块，五官与发型按电影截图在 Blender 中人工精修</td>
+</tr>
+<tr>
+<td>网页端性能（上千蜡烛、花瓣粒子）</td>
+<td>卡顿、加载慢</td>
+<td>蜡烛用自发光与烘焙代替实时光；粒子数量分档；花瓣地面用贴图 + 少量模型</td>
+</tr>
+<tr>
+<td>构建体积过大</td>
+<td>加载时间超标</td>
+<td>贴图压缩、音乐流式加载、模型严格按面数预算</td>
+</tr>
+<tr>
+<td>官方 Unity MCP 为测试版</td>
+<td>工作流中断</td>
+<td>常用操作沉淀为 C# 编辑器脚本；开源 MCP 作备选</td>
+</tr>
+<tr>
+<td>鼠标锁定在部分浏览器表现不一</td>
+<td>视角控制异常</td>
+<td>只正式支持 Chrome 与 Edge，其他浏览器提示切换</td>
+</tr>
+</tbody>
+</table></div>
+    </main>
+  </div>
+</section>
+
+<!-- Library -->
+<section class="view" id="view-library" hidden>
+  <div class="wrap">
+    <h1 class="page">参考图库</h1>
+    <p class="sub">按类别存放场景、人物、道具等参考图，可上传和下载。</p>
+    <div class="cats" id="cats" role="group" aria-label="类别"></div>
+    <div class="lib-bar">
+      <h2 id="cat-title">场景</h2>
+      <div>
+        <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+        <button class="btn-main" id="upload" type="button" hidden>上传图片</button>
+      </div>
+    </div>
+    <div class="drop" id="drop">
+      <div class="grid" id="grid"></div>
+      <p class="empty" id="empty">正在加载图库…</p>
+    </div>
+    <p class="lib-note" id="lib-note">支持 PNG、JPG、WebP、GIF，单张不超过 20 MB。也可以把图片直接拖进上面的区域。</p>
+  </div>
+</section>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ---------- shared ---------- */
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function toast(msg) {
+  toastEl.textContent = msg; toastEl.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+}
+
+/* ---------- routing ---------- */
+const VIEWS = ['checklist', 'prd', 'library'];
+function route() {
+  const h = location.hash.slice(1);
+  let view = 'checklist', anchor = null;
+  if (VIEWS.includes(h)) view = h;
+  else if (h && document.getElementById(h) && document.getElementById('view-prd').contains(document.getElementById(h))) { view = 'prd'; anchor = h; }
+  VIEWS.forEach(v => { document.getElementById('view-' + v).hidden = v !== view; });
+  document.querySelectorAll('.topbar a').forEach(a => {
+    if (a.dataset.view === view) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
+  if (anchor) document.getElementById(anchor).scrollIntoView();
+  else window.scrollTo(0, 0);
+  if (view === 'library') initLibrary();
+}
+window.addEventListener('hashchange', route);
+
+/* ---------- checklist ---------- */
+const PHASES = [
+  {
+    title: "阶段一：工具准备与打通",
+    steps: [
+      { t: "安装 Blender 并配置 Blender CLI", d: "安装后确认命令行能运行 <code>blender -b</code>，以后 Claude 就通过这个命令批量处理模型。" },
+      { t: "安装 Auto-Rig Pro", d: "在 Blender 中安装这个付费插件，用于给人物绑骨蒙皮。" },
+      { t: "安装 Unity", list: [
+        "通过 Unity Hub 安装 Unity 6，新建 URP 项目，并把项目连接到 Unity Cloud。",
+        "在 Package Manager 里安装 AI Assistant 包（官方 Unity MCP 就在里面，原文称之为 Pipeline 包）。",
+        "确认 Unity CLI（<code>-batchmode</code>）可用。"
+      ] },
+      { t: "连接 Claude", d: "安装 Claude Code 并接入 Unity MCP。首次连接时，在 Unity 的 Project Settings → AI → Unity MCP 里批准。" },
+      { t: "注册账号", d: "Tripo Studio（studio.tripo3d.ai）、Mixamo（需要 Adobe 账号）；再装好 Git + Git LFS。" },
+      { t: "跑通全链路", d: "随便拿一个 Tripo 模型，让 Claude 用 Blender CLI 清理后导入 Unity 并放进场景。这一步成功，说明工具链没问题。" },
+      { t: "部署网页外壳", d: "把空项目导出 Web 版本，部署到你的 .dev 域名，确认网址能打开、点击后鼠标能锁定。这里要决定用 WebGPU（Sac 的做法，画质更好但兼容性差一些）还是 WebGL 2（PRD 默认）。" }
+    ]
+  },
+  {
+    title: "阶段二：生成参考图（GPT Image 2.5）",
+    steps: [
+      { t: "场景参考图", d: "先用你的电影截图和 PRD 第 4 节生成一张满意的墓园夜景主效果图。再围绕它补充四张：俯视图（布局）、斜侧视图（高度与层次）、教堂外观、教堂内部。也可以按原文提示词一次生成综合图；你的场景有室内也有室外，建议还是分开生成，更稳。",
+        p: "基于上传的场景参考图，帮我生成一张该场景的全面貌参考图片，包括整体环境的多视角视图以及局部细节的展示。" },
+      { t: "人物与道具参考图", d: "生成 T-pose 四视图（正、背、左、右），并确保同一角色在各视角下的服装、比例完全一致。需要的有：", list: [
+        "Miguel", "穿身路人", "2–3 个生者配角", "1–2 个骷髅亡灵", "白色吉他的多角度图"
+      ] }
+    ]
+  },
+  {
+    title: "阶段三：场景资产",
+    steps: [
+      { t: "拆分资产", d: "把场景参考图和 PRD 第 11 节一起交给 Claude：",
+        p: "我现在要进行游戏开发，我的技术栈是 Tripo + Blender + Unity。你根据我们上述生成的场景参考图，帮我去深入分析哪些资产适合用 Tripo 生成，而哪些资产适合用 Blender 直接进行搭建。将需要 Tripo 生成的资产在图片中标注出来，方便我来确认。" },
+      { t: "在 Tripo 生成道具", d: "确认清单后，用 H3.1 模型生成。输入优先用参考图的局部截图，PRD 第 11 节的英文提示词作为补充，然后导出 FBX/GLB。" },
+      { t: "清理模型", d: "让 Claude 用 Blender CLI 批量清理、减面、生成碰撞体，面数按 PRD 第 11 节的预算控制。" }
+    ]
+  },
+  {
+    title: "阶段四：场景搭建",
+    steps: [
+      { t: "复刻场景", d: "把参考图和 Tripo 资产交给 Claude，让它操控 Blender + Unity 搭建，布局按 PRD 4.1 的俯视图：",
+        p: "根据上传的场景内外景多视角参考图以及生成好的 Tripo 3D 资产，你来对照参考图进行完美级的复刻。要求实现和参考图一样的惊艳质感和细节还原。" },
+      { t: "多角度检查迭代", d: "从正面、侧面、俯视等角度截图，对照参考图指出差异，让 Claude 逐步调整。可以额外让一个独立的审查 agent 做多机位对比，这一步可选。" }
+    ]
+  },
+  {
+    title: "阶段五：人物制作",
+    steps: [
+      { t: "生成 Miguel 模型", d: "在 Tripo 中选择「多视图生成 3D」，上传四视图，设置为：", list: [
+        "拓扑：四边形", "精度：最高", "模型：Smart Mesh P2.0",
+        "白模网格整齐就点 Texture 生成贴图；某个部位不对，先用 Edit Mesh 局部重新生成。"
+      ] },
+      { t: "精修 Miguel 的脸", d: "五官和发型是他的辨识度关键，导入 Blender 后对照电影截图精修。" },
+      { t: "绑骨蒙皮（Auto-Rig Pro）", d: "在 Claude 里上传模型：",
+        p: "使用 Auto-Rig Pro 为人物完成绑骨和蒙皮，确保骨骼位置与人物关节对齐。完成后测试抬手、弯腿、转身等基础动作，检查并修正明显的变形、拉扯和穿模问题。" },
+      { t: "下载 Mixamo 动作", d: "按关键词搜索并下载 FBX，例如 idle、walking、running、kneeling、picking up、praying、surprised、looking at hands。" },
+      { t: "适配骨骼", d: "让 Claude 检查这些动作是否匹配 Miguel 的骨骼，并完成接入。" },
+      { t: "精调特殊动作", d: "取下吉他、抱吉他、拨弦、擦墓碑、献花这类人和道具有接触的动作，需要单独调整。其他动作把「吉他」换成对应道具即可。",
+        p: "请参考提供的 Mixamo 动作，保留其中适用的部分，并使用 Auto-Rig Pro 的手臂 IK 控制器调整手臂姿势，配合手指握持和吉他位置的细节修正，补全「从墙上取下吉他并抱在怀里」的动作。确保手掌与琴颈、琴身接触稳定、动作过程自然，避免穿模、握持脱离或吉他悬空。" },
+      { t: "其他角色", d: "路人、生者配角、骷髅走同样流程，精度要求可以低一些。" }
+    ]
+  },
+  {
+    title: "阶段六：玩法开发（Claude 经 Unity MCP）",
+    note: "开始这一阶段前，先去 Sac 的 X 账号看看他是否已在 GitHub 开源代码，他的镜头、交互、网页构建代码可以直接参考。",
+    steps: [
+      { t: "角色控制与镜头", d: "角色控制器、走/跑，以及点击锁定鼠标的自由视角（PRD 第 8 节）。" },
+      { t: "交互与扫墓", d: "交互提示，读墓碑名字，扫墓 4 步，按 Tab 显示目标面板（PRD 7.2、第 9 节）。" },
+      { t: "推进到教堂", d: "花瓣小路亮起、教堂门打开，之后从头试玩环节 1–6。" },
+      { t: "转折点", d: "取吉他、鼠标点击拨弦。" },
+      { t: "过场", d: "用 Timeline 制作 C0–C4。路人穿身那段镜头放在 Miguel 头顶斜后上方（PRD 8.3）。" },
+      { t: "亡灵世界与结尾", d: "切换到亡灵世界，Miguel 发出橙光，最后出现 To be continued 结尾，然后从头玩通全部 12 个环节。" }
+    ]
+  },
+  {
+    title: "阶段七：美术氛围",
+    steps: [
+      { t: "灯光、特效、音乐", d: "烛光、月光、Bloom，飘落和腾起的花瓣，亡灵光晕，电影原声与音效（PRD 第 10 节）。放在玩法跑通之后做，以免特效掩盖逻辑问题。" }
+    ]
+  },
+  {
+    title: "阶段八：测试与上线",
+    steps: [
+      { t: "完整试玩与修 Bug", d: "Sac 用 Astra 做这一步，你用 Claude 也可以。特别检查每次交互后方向键是否正常，他的游戏就出过完成任务后 WASD 反向的问题。" },
+      { t: "优化与上线", d: "性能优化，在 Chrome 和 Edge 中测试，校对英文文案，确认版权声明，然后正式上线。" }
+    ]
+  }
+];
+
+const KEY = "remember-me-checklist-v1";
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+function save() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+    document.getElementById("saved").textContent = "已自动保存 " + new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  } catch (e) {
+    document.getElementById("saved").textContent = "无法保存：浏览器禁止了本地存储，请换用 Chrome 或 Edge 打开";
+  }
+}
+const list = document.getElementById("list");
+const candles = document.getElementById("candles");
+const allIds = [];
+let n = 0;
+PHASES.forEach((phase, pi) => {
+  const sec = document.createElement("section");
+  sec.className = "phase";
+  sec.innerHTML = `<div class="phase-head"><h2>${phase.title}</h2><span data-phase="${pi}"></span></div>`;
+  if (phase.note) { const p = document.createElement("p"); p.className = "phase-note"; p.textContent = phase.note; sec.appendChild(p); }
+  phase.steps.forEach(s => {
+    n += 1;
+    const id = "s" + n;
+    allIds.push({ id, phase: pi, title: s.t });
+    const row = document.createElement("div");
+    row.className = "step"; row.dataset.id = id;
+    let html = `<input type="checkbox" id="c-${id}" aria-label="完成：${s.t}"><span class="num">${n}</span><div class="content"><h3><label for="c-${id}">${s.t}</label></h3>`;
+    if (s.d) html += `<p>${s.d}</p>`;
+    if (s.list) html += `<ul>${s.list.map(x => `<li>${x}</li>`).join("")}</ul>`;
+    if (s.p) html += `<div class="prompt"><span class="ptext">${s.p}</span><button class="btn-quiet copy" type="button">复制提示词</button></div>`;
+    row.innerHTML = html + `</div>`;
+    sec.appendChild(row);
+  });
+  list.appendChild(sec);
+});
+allIds.forEach(({ id, title }, i) => {
+  const c = document.createElement("button");
+  c.type = "button"; c.className = "candle"; c.dataset.id = id;
+  c.title = (i + 1) + ". " + title;
+  c.setAttribute("aria-label", "跳到第 " + (i + 1) + " 步：" + title);
+  c.innerHTML = '<span class="flame"></span><span class="body"></span>';
+  c.addEventListener("click", () => document.querySelector(`.step[data-id="${id}"]`).scrollIntoView({ block: "center" }));
+  candles.appendChild(c);
+});
+document.getElementById("total").textContent = allIds.length;
+function renderChecklist() {
+  let done = 0; const per = {};
+  allIds.forEach(({ id, phase }) => {
+    const on = !!state[id];
+    if (on) done += 1;
+    per[phase] = per[phase] || [0, 0]; per[phase][1] += 1; if (on) per[phase][0] += 1;
+    document.getElementById("c-" + id).checked = on;
+    document.querySelector(`.step[data-id="${id}"]`).classList.toggle("done", on);
+    document.querySelector(`.candle[data-id="${id}"]`).classList.toggle("lit", on);
+  });
+  document.getElementById("count").textContent = done;
+  document.querySelectorAll("[data-phase]").forEach(el => { const [a, b] = per[el.dataset.phase]; el.textContent = a + " / " + b; });
+}
+list.addEventListener("change", e => {
+  if (e.target.matches('input[type="checkbox"]')) {
+    const id = e.target.id.slice(2);
+    if (e.target.checked) state[id] = true; else delete state[id];
+    renderChecklist(); save();
+  }
+});
+list.addEventListener("click", e => {
+  if (e.target.matches(".copy")) {
+    const text = e.target.parentElement.querySelector(".ptext").textContent;
+    navigator.clipboard.writeText(text).then(() => toast("已复制")).catch(() => toast("复制失败，请手动选中复制"));
+  }
+});
+const resetBtn = document.getElementById("reset");
+resetBtn.addEventListener("click", () => {
+  if (resetBtn.dataset.armed) {
+    delete resetBtn.dataset.armed; resetBtn.textContent = "清空全部进度";
+    state = {}; renderChecklist(); save(); return;
+  }
+  resetBtn.dataset.armed = "1"; resetBtn.textContent = "再点一次确认清空";
+  setTimeout(() => { delete resetBtn.dataset.armed; resetBtn.textContent = "清空全部进度"; }, 3000);
+});
+renderChecklist();
+
+/* ---------- PRD ---------- */
+document.querySelectorAll('#view-prd main code').forEach(c => {
+  c.title = '点击复制';
+  c.addEventListener('click', () => navigator.clipboard.writeText(c.textContent).then(() => toast('已复制')).catch(() => toast('复制失败，请手动选中复制')));
+});
+const tocLinks = [...document.querySelectorAll('nav.toc ul a')];
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) tocLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id)); });
+}, { rootMargin: '-60px 0px -75% 0px' });
+tocLinks.map(a => document.getElementById(a.getAttribute('href').slice(1))).filter(Boolean).forEach(t => obs.observe(t));
+if (window.matchMedia('(max-width: 960px)').matches) document.getElementById('toc-details').open = false;
+
+/* ---------- Library (Vercel Blob) ---------- */
+const CATS = [
+  { id: 'scene', name: '场景' },
+  { id: 'character', name: '人物' },
+  { id: 'prop', name: '道具' },
+  { id: 'lighting', name: '灯光与氛围' },
+  { id: 'motion', name: '动作' },
+  { id: 'ui', name: '界面 UI' },
+  { id: 'other', name: '其他' }
+];
+let currentCat = 'scene';
+let items = [];
+let libStarted = false;
+const catsEl = document.getElementById('cats');
+const gridEl = document.getElementById('grid');
+const emptyEl = document.getElementById('empty');
+const uploadBtn = document.getElementById('upload');
+const fileInput = document.getElementById('file');
+const dropEl = document.getElementById('drop');
+const EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
+
+function renderCats() {
+  catsEl.innerHTML = '';
+  CATS.forEach(c => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(c.id === currentCat));
+    b.append(c.name);
+    const s = document.createElement('span'); s.className = 'count'; s.textContent = items.filter(i => i.cat === c.id).length; b.append(s);
+    b.addEventListener('click', () => { currentCat = c.id; renderCats(); renderGrid(); });
+    catsEl.appendChild(b);
+  });
+  document.getElementById('cat-title').textContent = CATS.find(c => c.id === currentCat).name;
+}
+
+function renderGrid() {
+  const shown = items.filter(i => i.cat === currentCat).sort((a, b) => b.createdAt - a.createdAt);
+  gridEl.innerHTML = '';
+  emptyEl.hidden = shown.length > 0;
+  emptyEl.textContent = '这个类别还没有图片。点击「上传图片」或把图片拖到这里。';
+  shown.forEach(it => {
+    const card = document.createElement('div'); card.className = 'card';
+    const a = document.createElement('a'); a.className = 'thumb'; a.href = it.url; a.target = '_blank'; a.rel = 'noopener';
+    const img = document.createElement('img'); img.src = it.url; img.alt = it.name; img.loading = 'lazy';
+    img.onerror = () => img.remove();
+    a.appendChild(img);
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const name = document.createElement('span'); name.className = 'name editable'; name.textContent = it.name; name.title = '点击重命名';
+    name.addEventListener('click', () => startRename(it, meta, name));
+    const dl = document.createElement('button'); dl.type = 'button'; dl.textContent = '下载';
+    dl.addEventListener('click', () => downloadItem(it));
+    const del = document.createElement('button'); del.type = 'button'; del.textContent = '删除';
+    del.addEventListener('click', () => {
+      if (del.dataset.armed) { deleteItem(it); return; }
+      del.dataset.armed = '1'; del.textContent = '确认删除';
+      setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = '删除'; } }, 3000);
+    });
+    meta.append(name, dl, del);
+    card.append(a, meta);
+    gridEl.appendChild(card);
+  });
+}
+
+async function refresh() {
+  try {
+    const res = await fetch('/api/library', { cache: 'no-store' });
+    if (!res.ok) throw new Error(res.status);
+    items = (await res.json()).items || [];
+    renderCats(); renderGrid();
+  } catch (e) {
+    emptyEl.hidden = false;
+    emptyEl.textContent = '无法连接图库，请刷新页面。';
+  }
+}
+
+async function api(body) {
+  const res = await fetch('/api/library', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { const err = new Error(data.error || 'failed'); err.code = data.error; throw err; }
+  return data;
+}
+
+function isDuplicate(name, exceptPath) {
+  const lower = name.trim().toLowerCase();
+  return items.some(x => x.pathname !== exceptPath && x.name.trim().toLowerCase() === lower);
+}
+
+function startRename(it, meta, nameEl) {
+  if (meta.querySelector('input')) return;
+  const input = document.createElement('input');
+  input.className = 'rename'; input.value = it.name; input.setAttribute('aria-label', '图片名称');
+  const others = [...meta.querySelectorAll('button')];
+  others.forEach(b => { b.hidden = true; });
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button'; saveBtn.className = 'save'; saveBtn.textContent = '保存';
+  nameEl.replaceWith(input); meta.appendChild(saveBtn);
+  input.focus(); input.select();
+  const finish = () => { input.replaceWith(nameEl); saveBtn.remove(); others.forEach(b => { b.hidden = false; }); };
+  let saving = false;
+  const commit = async () => {
+    if (saving) return;
+    const v = input.value.trim();
+    if (!v || v === it.name) { finish(); return; }
+    if (isDuplicate(v, it.pathname)) { toast('已有同名图片，请换一个名字'); input.focus(); input.select(); return; }
+    saving = true; saveBtn.disabled = true;
+    try {
+      await api({ action: 'rename', pathname: it.pathname, name: v });
+      toast('已保存');
+      await refresh();
+    } catch (e) {
+      saving = false; saveBtn.disabled = false;
+      toast(e.code === 'duplicate_name' ? '已有同名图片，请换一个名字' : '保存失败，请再试一次');
+    }
+  };
+  saveBtn.addEventListener('click', commit);
+  input.addEventListener('keydown', e => {
+    if (e.isComposing || e.keyCode === 229) return;
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(); }
+  });
+}
+
+async function downloadItem(it) {
+  const filename = it.name.replace(/\.[^.]+$/, '') + '.' + it.ext;
+  try {
+    const res = await fetch(it.url);
+    if (!res.ok) throw new Error('fetch');
+    const blob = await res.blob();
+    const href = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = href; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(href), 2000);
+  } catch (e) {
+    window.open(it.downloadUrl, '_blank');
+  }
+}
+
+async function deleteItem(it) {
+  try {
+    await api({ action: 'delete', pathname: it.pathname });
+    toast('已删除');
+    await refresh();
+  } catch (e) {
+    toast('删除失败，请刷新后再试');
+  }
+}
+
+function b64url(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = ''; bytes.forEach(b => { bin += String.fromCharCode(b); });
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function uniqueName(base) {
+  let name = base, i = 2;
+  while (isDuplicate(name)) { name = base.replace(/(\.[^.]+)?$/, ` (${i})$1`); i += 1; }
+  return name;
+}
+
+async function uploadFiles(files) {
+  const imgs = [...files].filter(f => EXT[f.type]);
+  if (!imgs.length) { toast('只支持 PNG、JPG、WebP、GIF 图片'); return; }
+  const targetCat = currentCat;
+  uploadBtn.disabled = true;
+  let ok = 0;
+  for (let i = 0; i < imgs.length; i++) {
+    const f = imgs[i];
+    uploadBtn.textContent = `上传中 ${i + 1}/${imgs.length}`;
+    if (f.size > 20 * 1024 * 1024) { toast('「' + f.name + '」超过 20 MB，已跳过'); continue; }
+    const name = uniqueName(f.name);
+    const id = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    const pathname = `library/${targetCat}/${id}__${b64url(name)}.${EXT[f.type]}`;
+    try {
+      await window.BlobClient.upload(pathname, f, { access: 'public', handleUploadUrl: '/api/upload', contentType: f.type });
+      items.push({ pathname, name, cat: targetCat });
+      ok += 1;
+    } catch (e) {
+      toast('「' + f.name + '」上传失败');
+    }
+  }
+  uploadBtn.disabled = false;
+  uploadBtn.textContent = '上传图片';
+  if (ok) toast('已上传 ' + ok + ' 张');
+  await refresh();
+}
+
+uploadBtn.hidden = false;
+uploadBtn.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => { uploadFiles(fileInput.files); fileInput.value = ''; });
+['dragenter', 'dragover'].forEach(ev => dropEl.addEventListener(ev, e => { e.preventDefault(); dropEl.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => dropEl.addEventListener(ev, () => dropEl.classList.remove('over')));
+dropEl.addEventListener('drop', e => { e.preventDefault(); uploadFiles(e.dataTransfer.files); });
+
+function initLibrary() {
+  if (libStarted) return;
+  libStarted = true;
+  renderCats();
+  refresh();
+}
+
+/* ---------- Checklist progress export / import ---------- */
+document.getElementById('export').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = href; a.download = 'rememberme-progress.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(href), 2000);
+});
+const importInput = document.getElementById('import-file');
+document.getElementById('import').addEventListener('click', () => importInput.click());
+importInput.addEventListener('change', async () => {
+  const f = importInput.files[0]; importInput.value = '';
+  if (!f) return;
+  try {
+    const data = JSON.parse(await f.text());
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('bad');
+    state = {};
+    Object.keys(data).forEach(k => { if (/^s\d+$/.test(k) && data[k]) state[k] = true; });
+    renderChecklist(); save(); toast('进度已导入');
+  } catch (e) { toast('导入失败：文件格式不对'); }
+});
+
+route();
+
+</script>
+</body>
+</html>
